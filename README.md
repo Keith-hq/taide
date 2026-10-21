@@ -2,122 +2,124 @@
 
 <img src="https://capsule-render.vercel.app/api?type=waving&color=0:6366F1,100:8B5CF6&height=200&section=header&text=TAIDE&fontSize=80&fontColor=ffffff&fontAlignY=32&desc=Teaching%20Assistant%20inside%20your%20IDE&descSize=18&descAlignY=56" width="100%" alt="TAIDE"/>
 
-**An IntelliJ IDEA plugin that answers Java EE course questions with RAG-grounded citations — and automates the boring parts of writing code.**
+<h1>TAIDE · 住在 IDE 里的课程助教</h1>
 
 <p>
-  <img src="https://img.shields.io/badge/status-active%20development-yellow?style=for-the-badge" alt="status"/>
-  <img src="https://img.shields.io/badge/course-CST3492-2563EB?style=for-the-badge" alt="course"/>
-  <img src="https://img.shields.io/badge/group-B-8B5CF6?style=for-the-badge" alt="group"/>
-  <img src="https://img.shields.io/badge/version-0.1.0--SNAPSHOT-9CA3AF?style=for-the-badge" alt="version"/>
+<b>面向 CST3492 的 IntelliJ IDEA 插件</b><br/>
+用带引用的 RAG 回答课程问题，顺手把 JUnit 测试和提交信息也写了
 </p>
 
 <p>
-  <img src="https://img.shields.io/badge/Java-21-ED8B00?style=flat-square&logo=openjdk&logoColor=white" alt="Java"/>
-  <img src="https://img.shields.io/badge/IntelliJ%20Platform-2024.2+-000000?style=flat-square&logo=intellijidea&logoColor=white" alt="IntelliJ"/>
-  <img src="https://img.shields.io/badge/RAG-LangChain4j-10B981?style=flat-square" alt="RAG"/>
-  <img src="https://img.shields.io/badge/LLM-DeepSeek-4D6BFE?style=flat-square&logo=deepseek&logoColor=white" alt="LLM"/>
-  <img src="https://img.shields.io/badge/license-MIT-22C55E?style=flat-square" alt="license"/>
+  <img src="https://img.shields.io/badge/状态-开发中-f59e0b?style=for-the-badge" alt="status"/>
+  <img src="https://img.shields.io/badge/课程-CST3492-2563EB?style=for-the-badge" alt="course"/>
+  <img src="https://img.shields.io/badge/组别-Group_B-8B5CF6?style=for-the-badge" alt="group"/>
+  <img src="https://img.shields.io/badge/版本-0.1.0_SNAPSHOT-9CA3AF?style=for-the-badge" alt="version"/>
 </p>
 
 <p>
-  <a href="#-quick-start"><b>Quick Start</b></a> ·
-  <a href="#-architecture"><b>Architecture</b></a> ·
-  <a href="#-rag-pipeline"><b>RAG Pipeline</b></a> ·
-  <a href="docs/TEAM.md"><b>Team &amp; Ownership</b></a>
+  <a href="#-这是什么">这是什么</a> ·
+  <a href="#-功能">功能</a> ·
+  <a href="#-技术栈">技术栈</a> ·
+  <a href="#-架构">架构</a> ·
+  <a href="#-rag-管道">RAG 管道</a> ·
+  <a href="#-快速开始">快速开始</a> ·
+  <a href="docs/TEAM.md">分工与协作</a>
 </p>
 
 </div>
 
 > [!IMPORTANT]
-> **Project status: scaffolding.** This repository currently contains the design, the division of work, and the build skeleton. Every feature below is either *planned* or *in progress* — nothing is finished yet. The status column in the feature table is the source of truth. Last updated: 2026-10-21.
+> **当前状态：脚手架阶段。**
+> 本仓库目前包含设计、分工方案与构建骨架，下面列出的每一项功能都处于「计划中」或「进行中」，**没有一项是完成的**。
+> 功能表里的状态列是唯一事实来源。最后更新：2026-10-21。
 
 ---
 
-## 📖 What is TAIDE?
+## 💡 这是什么
 
-TAIDE is a **course-specific teaching assistant** that lives inside IntelliJ IDEA. It is built for *CST3492 — Java Enterprise Application Development* (AY 2026/27 Semester 1, Group B).
+TAIDE 是一个**课程专属的助教**，装在 IntelliJ IDEA 里，为 *CST3492 — Java 企业级应用开发*（2026/27 学年第一学期，B 组）服务。
 
-A general-purpose chatbot answers from generic training data. A TA has to answer **from the lecture slides** — and prove it. TAIDE pre-processes the course materials into searchable chunks, retrieves the ones that actually matter for your question, and forces the model to cite the source document and slide number. When nothing relevant exists, it says so instead of bluffing.
+通用聊天机器人靠训练数据回答，助教得**照着课件回答**，而且要能拿出证据。TAIDE 把课程材料预处理成可检索的知识块，针对每个问题召回真正相关的那几段，再逼模型标注出处。当课件里确实没有相关内容时，它会明说，而不是编一个。
 
-On top of that, it automates three repetitive tasks: writing JUnit tests from a one-line requirement, drafting Conventional Commit messages from staged diffs, and reviewing code against the conventions taught in class.
+在此之上，它还自动化三件重复劳动：按一句自然语言需求写 JUnit 测试、读暂存区 diff 生成 Conventional Commit 提交信息、以及**对照课件规范审查代码**。
 
 ---
 
-## ✨ Features
+## ✨ 功能
 
-### F0 — Core Teaching Assistant *(all groups)*
+### F0 — 核心助教（全组必做）
 
-| | Feature | What it does | Status |
+| | 功能 | 说明 | 状态 |
 |:--|:--|:--|:--:|
-| **F0.1** | 🔍 **RAG-grounded Q&A** | Chunks and indexes course materials, retrieves the top-k relevant passages for every question, and feeds them to the LLM as context | 🟡 |
-| **F0.2** | 📌 **Source citation** | Every grounded answer cites `document · slide/page`. Ungrounded answers are explicitly labelled *"general knowledge — no course material referenced"* | ⚪ |
-| **F0.3** | 💬 **Tool window UI** | A chat panel docked in the IDE: message history, streaming output, clickable citation cards | 🟡 |
-| **F0.4** | 🖱️ **Context awareness** | Right-click any selection → *Ask TAIDE about this code*. The selected code is injected into the prompt | ⚪ |
+| **F0.1** | 🔍 **RAG 问答** | 课件切块建索引，每个问题召回 top-k 相关片段，作为上下文喂给 LLM | 🟡 |
+| **F0.2** | 📌 **来源引用** | 每个有依据的回答都标注 `文档 · 页码`；无依据时显式标注「基于通用知识，未引用课件」 | ⚪ |
+| **F0.3** | 💬 **工具窗界面** | 停靠在 IDE 里的对话面板：消息历史、流式输出、可点击的引用卡片 | 🟡 |
+| **F0.4** | 🖱️ **上下文感知** | 选中代码右键 → *Ask TAIDE about this code*，选区内容自动注入提示词 | ⚪ |
 
-### F1 — Smart Actions *(Group B only)*
+### F1 — 智能动作（仅 B 组）
 
-| | Feature | What it does | Status |
+| | 功能 | 说明 | 状态 |
 |:--|:--|:--|:--:|
-| **F1.1** | 🧪 **JUnit test generation** | Prompts for a natural-language scenario ("user ID does not exist"), combines it with the selected class/method, generates a JUnit 5 test class and writes it into `src/test/java` | ⚪ |
-| **F1.2** | 📝 **Commit message generator** | Reads the staged diff, infers the semantic intent (feat / fix / refactor), drafts a Conventional Commit message you can edit before committing | ⚪ |
-| **F1.3** | 🎓 **Course-aware code review** | *Creative action.* Reviews selected code **against the lecture material** — flags deviations from the patterns taught in class, each finding backed by a citation | ⚪ |
+| **F1.1** | 🧪 **JUnit 测试生成** | 弹窗收一句自然语言场景（「用户 ID 不存在」），结合选中的类/方法生成 JUnit 5 测试类，写入 `src/test/java` | ⚪ |
+| **F1.2** | 📝 **提交信息生成** | 读取暂存区 diff，判断语义意图（feat / fix / refactor），按 Conventional Commits 起草，可编辑后提交 | ⚪ |
+| **F1.3** | 🎓 **课件感知代码审查** | *自创动作。* 对照**课件讲授的规范**审查选中的代码，每条问题都带课件引用 | ⚪ |
 
-<sub>⚪ planned · 🟡 in progress · 🟢 done</sub>
+<sub>⚪ 计划中 · 🟡 进行中 · 🟢 已完成</sub>
 
-**Why F1.3 is the creative action.** The other two automations are generic. A code review that cites *Lecture 4, slide 17* is something no off-the-shelf tool can do — it reuses the RAG pipeline we already built, and it is the single best thing to demo, because the reviewer can open the cited slide and check whether the model is right.
+**为什么把 F1.3 定为自创动作。** 另外两个自动化是通用的，市面上已有。而「指出这段代码违反了第 4 讲第 17 页讲的写法，并附上那一页」——没有现成工具能做到。它复用了已经建好的 RAG 管道，边际成本低；演示时观众可以当场打开被引用的那一页核对，这是最有说服力的一个功能。
 
 ---
 
-## 🛠️ Tech Stack
+## 🛠️ 技术栈
 
-<h3 align="center">Runtime &amp; Platform</h3>
+<h3 align="center">运行时与平台</h3>
 
 <p align="center">
   <img src="https://img.shields.io/badge/Java-21-ED8B00?style=for-the-badge&logo=openjdk&logoColor=white" alt="Java 21"/>
-  <img src="https://img.shields.io/badge/IntelliJ%20Platform-2024.2+-000000?style=for-the-badge&logo=intellijidea&logoColor=white" alt="IntelliJ Platform"/>
+  <img src="https://img.shields.io/badge/IntelliJ_Platform-2024.2+-000000?style=for-the-badge&logo=intellijidea&logoColor=white" alt="IntelliJ Platform"/>
   <img src="https://img.shields.io/badge/Gradle-8.x-02303A?style=for-the-badge&logo=gradle&logoColor=white" alt="Gradle"/>
 </p>
 
-<h3 align="center">RAG &amp; LLM</h3>
+<h3 align="center">RAG 与模型</h3>
 
 <p align="center">
   <img src="https://img.shields.io/badge/LangChain4j-1.x-1C3C3C?style=for-the-badge" alt="LangChain4j"/>
-  <img src="https://img.shields.io/badge/Apache%20Tika-3.x-D22128?style=for-the-badge&logo=apache&logoColor=white" alt="Apache Tika"/>
-  <img src="https://img.shields.io/badge/ONNX%20MiniLM-local%20embedding-005CED?style=for-the-badge" alt="ONNX"/>
+  <img src="https://img.shields.io/badge/Apache_Tika-3.x-D22128?style=for-the-badge&logo=apache&logoColor=white" alt="Apache Tika"/>
+  <img src="https://img.shields.io/badge/ONNX_MiniLM-本地嵌入-005CED?style=for-the-badge" alt="ONNX"/>
   <img src="https://img.shields.io/badge/DeepSeek-API-4D6BFE?style=for-the-badge&logo=deepseek&logoColor=white" alt="DeepSeek"/>
 </p>
 
-<h3 align="center">Tooling</h3>
+<h3 align="center">工程与测试</h3>
 
 <p align="center">
   <img src="https://img.shields.io/badge/JUnit-5-25A162?style=for-the-badge&logo=junit5&logoColor=white" alt="JUnit 5"/>
   <img src="https://img.shields.io/badge/JGit-7.x-F05032?style=for-the-badge&logo=git&logoColor=white" alt="JGit"/>
-  <img src="https://img.shields.io/badge/GitHub%20Actions-CI-2088FF?style=for-the-badge&logo=githubactions&logoColor=white" alt="CI"/>
+  <img src="https://img.shields.io/badge/GitHub_Actions-CI-2088FF?style=for-the-badge&logo=githubactions&logoColor=white" alt="CI"/>
 </p>
 
 ---
 
-## 🏗️ Architecture
+## 🏗️ 架构
 
 ```mermaid
 flowchart LR
     subgraph IDE["IntelliJ IDEA"]
-        UI["Tool Window<br/>Chat Panel"]
-        ACT["Context Menu<br/>Actions"]
-        CTX["Code Context<br/>Extractor"]
+        UI["工具窗<br/>对话面板"]
+        ACT["右键菜单<br/>智能动作"]
+        CTX["代码上下文<br/>提取器"]
     end
 
     subgraph CORE["TAIDE Core"]
         SVC["TaideService"]
         RET["Retriever"]
-        IDX["Vector Index<br/>(persisted)"]
+        IDX["向量索引<br/>（落盘）"]
         ING["Ingestor<br/>Tika + Chunker"]
         LLM["LlmClient"]
-        CIT["Citation Builder"]
+        CIT["引用构建器"]
     end
 
-    MAT["Course Materials<br/>PDF / PPTX"]
-    API["LLM API<br/>DeepSeek / AGI"]
+    MAT["课程材料<br/>PDF / PPTX"]
+    API["LLM API<br/>DeepSeek / 同济 AGI"]
 
     MAT --> ING --> IDX
     IDX --> RET
@@ -130,109 +132,109 @@ flowchart LR
     SVC --> UI
 ```
 
-**Three design decisions worth defending in the viva:**
+**三个可以拿去答辩的设计决策：**
 
-1. **Slide boundaries are sacred.** Chunks never cross a page boundary, so every chunk carries an exact `(file, slide)` pair. This is what makes citation cheap and honest — the alternative (fixed-size windows over the whole document) destroys page numbers and forces you to reconstruct them later.
-2. **Embeddings run locally.** `all-MiniLM-L6-v2` on ONNX, bundled with the plugin. No embedding API key, no per-query cost, and the demo works with the network unplugged. The LLM call is the only network dependency.
-3. **The index is a file, not a database.** A few thousand chunks fit comfortably in memory. Serialising to JSON under the plugin config directory keeps the build simple and makes the whole pipeline inspectable with a text editor. If the corpus ever outgrows this, swap in SQLite — the `VectorIndex` interface is the seam.
+1. **页边界不可跨越。** 切块永远不跨页，因此每个块都携带精确的 `(文件, 页码)`。这是引用既便宜又诚实的原因——反过来，先按固定窗口切全文、事后再还原页码，只会得到一堆对不上的出处。
+2. **嵌入在本地跑。** `all-MiniLM-L6-v2` 以 ONNX 形式随插件分发。不需要 embedding API Key，没有按次计费，断网也能演示。唯一的网络依赖是 LLM 调用。
+3. **索引是一个文件，不是数据库。** 几千个块完全可以放进内存。序列化成 JSON 落到插件配置目录，构建简单，整条管道用文本编辑器就能检查。如果语料真的涨到装不下，换 SQLite 即可——`VectorIndex` 接口就是那道缝。
 
 ---
 
-## 🔬 RAG Pipeline
+## 🔬 RAG 管道
 
-| Stage | Approach | Notes |
+| 阶段 | 做法 | 说明 |
 |:--|:--|:--|
-| **1. Parse** | Apache Tika, page-by-page | PDF → page boxes; PPTX → per-slide text, speaker notes included |
-| **2. Chunk** | Recursive split inside a page, target **512 tokens**, **64 overlap** | Never spans pages — preserves citation granularity |
-| **3. Embed** | `all-MiniLM-L6-v2` (ONNX, 384-d), batched + cached by content hash | Runs offline, ~5 ms/chunk on CPU |
-| **4. Index** | Cosine similarity over an in-memory store, JSON-persisted | Rebuild on material change, keyed by file mtime + hash |
-| **5. Retrieve** | top-k = 8 → score threshold 0.35 → **MMR** (λ = 0.7) to drop near-duplicates | Threshold tuned on a 20-question eval set |
-| **6. Ground** | If top-1 score < threshold → *general knowledge* mode, no citations | Prevents fabricated references |
-| **7. Cite** | Chunk metadata → `[Lecture 05 · Slide 12]`, clickable, opens the source PDF | Citations are generated from metadata, never from the model |
+| **1. 解析** | Apache Tika，逐页解析 | PDF 取页面框；PPTX 逐张幻灯片取文本，含备注 |
+| **2. 切块** | 页内递归切分，目标 **512 token**，重叠 **64** | 绝不跨页——保住引用的粒度 |
+| **3. 嵌入** | `all-MiniLM-L6-v2`（ONNX，384 维），批量 + 按内容哈希缓存 | 离线可跑，CPU 上约 5 ms/块 |
+| **4. 索引** | 内存中的余弦相似度存储，JSON 持久化 | 按文件 mtime + 哈希判断是否需要重建 |
+| **5. 检索** | top-k = 8 → 相似度阈值 0.35 → **MMR**（λ = 0.7）去重 | 阈值在 20 题评测集上调出来 |
+| **6. 判定** | top-1 分数低于阈值 → 进入「通用知识」模式，不输出引用 | 防止编造出处 |
+| **7. 引用** | 块元数据 → `[第 05 讲 · 第 12 页]`，可点击打开源 PDF | 引用由元数据生成，**绝不交给模型写** |
 
 ---
 
-## 🚀 Quick Start
+## 🚀 快速开始
 
 ```bash
-# 1. Clone
+# 1. 克隆
 git clone https://github.com/Keith-hq/taide.git
 cd taide
 
-# 2. Build (JDK 21 required)
+# 2. 构建（需要 JDK 21）
 ./gradlew buildPlugin
 
-# 3. Run a sandbox IDE with the plugin installed
+# 3. 启动带插件的沙箱 IDE
 ./gradlew runIde
 ```
 
-**Configure the model** — *Settings → Tools → TAIDE*:
+**配置模型** —— *Settings → Tools → TAIDE*：
 
-| Field | Value |
+| 字段 | 值 |
 |:--|:--|
-| Provider | `DeepSeek` / `AGI (Tongji)` |
-| API Key | your key |
+| Provider | `DeepSeek` / `AGI（同济）` |
+| API Key | 你自己的 Key |
 | Model | `deepseek-chat` |
-| Course materials | folder containing the lecture PDFs/PPTX |
+| 课件目录 | 存放讲义 PDF/PPTX 的文件夹 |
 
-Then click **Rebuild Knowledge Base** in the settings page. First build takes ~30 s for 10 lectures; afterwards it is cached.
+然后在设置页点 **Rebuild Knowledge Base**。10 份讲义首次建索引约 30 秒，之后走缓存。
 
-> The plugin ships **without** any API key and **without** the course materials. Both are supplied locally by the user.
+> 插件**不内置**任何 API Key，也**不附带**课程材料，两者都由使用者本地提供。
 
 ---
 
-## 📁 Project Structure
+## 📁 目录结构
 
 ```
 taide/
 ├── src/main/java/edu/cst3492/taide/
-│   ├── rag/            # ingest · chunk · embed · index · retrieve
-│   ├── llm/            # provider clients, prompt templates
-│   ├── ui/             # tool window, chat panel, citation cards
-│   ├── action/         # context-menu actions (F0.4 + F1)
-│   ├── git/            # staged-diff extraction
-│   ├── settings/       # persistent plugin settings
-│   └── service/        # TaideService — the single seam between UI and core
+│   ├── rag/            # 摄取 · 切块 · 嵌入 · 索引 · 检索
+│   ├── llm/            # 各家客户端、提示词模板
+│   ├── ui/             # 工具窗、对话面板、引用卡片
+│   ├── action/         # 右键动作（F0.4 + F1）
+│   ├── git/            # 暂存区 diff 提取
+│   ├── settings/       # 插件持久化配置
+│   └── service/        # TaideService —— UI 与内核之间唯一的接缝
 ├── src/main/resources/
 │   ├── META-INF/plugin.xml
-│   └── prompts/        # versioned prompt templates
+│   └── prompts/        # 带版本的提示词模板
 ├── docs/
-│   ├── TEAM.md         # division of work — the document we actually run on
+│   ├── TEAM.md         # 分工方案 —— 我们真正照着执行的那份文档
 │   └── ARCHITECTURE.md
 └── build.gradle.kts
 ```
 
 ---
 
-## 👥 Team
+## 👥 团队
 
-| | Role | Owns |
+| | 角色 | 负责 |
 |:--|:--|:--|
-| **A** | RAG &amp; LLM Core | ingestion, chunking, retrieval, prompting, citations |
-| **B** | UI/UX &amp; Context | tool window, chat panel, context menu, `plugin.xml` |
-| **C** | Automation &amp; Release | the three F1 actions, Git integration, CI, packaging |
+| **A** | RAG 与模型内核 | 摄取、切块、检索、提示词、引用 |
+| **B** | UI/UX 与上下文 | 工具窗、对话面板、右键菜单、`plugin.xml` |
+| **C** | 自动化与发布 | F1 三个动作、Git 集成、CI、打包 |
 
-Full responsibilities, interface contracts, milestones and working agreements: **[docs/TEAM.md](docs/TEAM.md)**
+完整职责、接口契约、里程碑与协作约定见 **[docs/TEAM.md](docs/TEAM.md)**。
 
 ---
 
-## 🗺️ Milestones
+## 🗺️ 里程碑
 
-| Date | Milestone |
+| 日期 | 节点 |
 |:--|:--|
-| 10-22 | Interface contract frozen (v1.0) |
-| 10-26 | **Integration #1** — F0 end-to-end with citations |
-| 10-30 | **Integration #2** — F0 + F1 complete |
-| 11-01 | Report + slides drafted, plugin packaged |
-| 11-03 23:00 | **Submission deadline** |
-| 11-04 13:30 | Presentation |
+| 10-22 | 接口契约冻结（v1.0） |
+| 10-26 | **集成 #1** —— F0 端到端跑通，带引用 |
+| 10-30 | **集成 #2** —— F0 + F1 全部打通 |
+| 11-01 | 报告与幻灯片初稿完成，插件打包 |
+| 11-03 23:00 | **提交截止** |
+| 11-04 13:30 | 课堂演示 |
 
 ---
 
 <div align="center">
 
-**CST3492 — Java Enterprise Application Development** · AY 2026/27 Semester 1 · Group B
+**CST3492 — Java 企业级应用开发** · 2026/27 学年第一学期 · B 组
 
-Made with ☕ and far too many `gradlew runIde` cycles.
+用 ☕ 和数不清的 `gradlew runIde` 写成。
 
 </div>
