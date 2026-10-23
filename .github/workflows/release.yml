@@ -19,7 +19,7 @@ jobs:
           java-version: "21"
       - uses: gradle/actions/setup-gradle@v4
       - name: Validate version and build
-        run: ./gradlew validateReleaseVersion build verifyPluginStructure verifyPlugin --stacktrace
+        run: ./gradlew validateReleaseVersion build buildPlugin verifyPluginStructure verifyPlugin --stacktrace
       - name: Publish plugin archive
         env:
           GH_TOKEN: ${{ github.token }}

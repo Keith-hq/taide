@@ -156,7 +156,7 @@ Platform tests exercise registered actions, selection metadata, thread transitio
 
 Python tests validate the connectivity probe and submission packager. The packager verifies team information in the report and on the first slide, preserves executable wrapper permissions, separates source and document folders, and produces deterministic ZIP entries with checksums.
 
-CI builds the plugin, runs tests, checks its structure, and invokes IntelliJ Plugin Verifier for the declared platform. A version-tag workflow validates the release version before publishing the installable ZIP.
+CI runs `buildPlugin` alongside tests and structure checks, and invokes IntelliJ Plugin Verifier for the declared platform. It uploads the installable ZIP as a dedicated artifact and fails the upload step if the package is absent. Test reports and UI samples form a separate evidence artifact. A version-tag workflow validates the release version before building and publishing the installable ZIP.
 
 Component verification on WSL2 with JDK 21 and IntelliJ IDEA Community 2024.2.4 passes 61 Java tests and 11 Python tests. Four integration tests execute B's 53 existing selection, conversation, citation-path, and settings checks. The formal plugin descriptor includes the shared automation registration fragment alongside B's tool window and settings. Plugin structure validation passes, and IntelliJ Plugin Verifier reports `Compatible` for build `IC-242.23726.103`, with three experimental `assertIsNonDispatchThread()` API usages in the settings component.
 

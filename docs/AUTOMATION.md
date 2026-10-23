@@ -17,7 +17,7 @@
 开发环境为 JDK 21、Gradle Wrapper 8.13、IntelliJ IDEA Community 2024.2.4。插件兼容范围为 IntelliJ Platform 242。
 
 ```bash
-./gradlew build verifyPluginStructure
+./gradlew build buildPlugin verifyPluginStructure
 ./gradlew verifyPlugin
 ./gradlew runIde
 ```
@@ -27,7 +27,7 @@
 已有相同版本的本地 IDEA 安装时，可复用 SDK：
 
 ```bash
-./gradlew build -PlocalPlatformPath=/path/to/idea-IC-242.23726.103
+./gradlew build buildPlugin -PlocalPlatformPath=/path/to/idea-IC-242.23726.103
 ```
 
 `src/standalone/resources/META-INF/plugin.xml` 提供独立沙箱入口。正式入口存在于 `src/main/resources/META-INF/plugin.xml` 时，构建自动使用正式入口。
@@ -188,7 +188,7 @@ Java 测试涵盖生成输入、JUnit 编译、非法输出、引用核验、暂
 
 ## CI 与发布
 
-PR 和 `main` 分支触发构建及测试。CI 同时运行插件结构验证、IntelliJ 二进制兼容性检查和 Python 交付工具测试，并上传插件 ZIP、测试报告及界面样本。
+PR 和 `main` 分支触发构建及测试。CI 同时运行插件结构验证、IntelliJ 二进制兼容性检查和 Python 交付工具测试。`buildPlugin` 生成的安装 ZIP 单独上传为 `taide-plugin-<commit>`，缺失安装包时上传步骤失败；测试报告和界面样本单独上传为 `taide-evidence-<commit>`。
 
 正式发布使用 `v<pluginVersion>` 标签。`gradle.properties` 中的版本应为正式版本；发布工作流先校验标签和版本，再构建插件并上传 GitHub Release 附件。插件分发 ZIP 与 Canvas 提交 ZIP 分别管理。
 

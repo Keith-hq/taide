@@ -35,15 +35,21 @@ jobs:
           python -m unittest discover -s scripts/tests -v
       - name: Build and validate plugin
         run: |
-          ./gradlew build verifyPluginStructure --stacktrace
+          ./gradlew build buildPlugin verifyPluginStructure --stacktrace
           ./gradlew -p examples/junit-demo build --stacktrace
-      - name: Upload plugin and evidence
+      - name: Upload installable plugin
+        uses: actions/upload-artifact@v4
+        with:
+          name: taide-plugin-${{ github.sha }}
+          path: build/distributions/*.zip
+          if-no-files-found: error
+          retention-days: 14
+      - name: Upload verification evidence
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: taide-build-${{ github.sha }}
+          name: taide-evidence-${{ github.sha }}
           path: |
-            build/distributions/*.zip
             build/reports/
             build/test-results/
           if-no-files-found: warn
