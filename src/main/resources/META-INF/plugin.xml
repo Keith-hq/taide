@@ -1,0 +1,58 @@
+<idea-plugin>
+    <id>edu.cst3492.taide</id>
+    <name>TAIDE</name>
+    <version>0.1.0-SNAPSHOT</version>
+    <vendor>TAIDE · CST3492 Group B</vendor>
+    <description><![CDATA[
+        A course teaching assistant inside IntelliJ IDEA. Ask about selected code,
+        read streaming answers and inspect their course material citations.
+    ]]></description>
+    <idea-version since-build="242"/>
+
+    <depends>com.intellij.modules.platform</depends>
+    <depends>com.intellij.java</depends>
+
+    <extensions defaultExtensionNs="com.intellij">
+        <toolWindow id="TAIDE"
+                    anchor="right"
+                    icon="/icons/taide.svg"
+                    factoryClass="edu.cst3492.taide.ui.TaideToolWindowFactory"/>
+        <projectConfigurable id="edu.cst3492.taide.settings"
+                             parentId="tools"
+                             displayName="TAIDE"
+                             instance="edu.cst3492.taide.ui.settings.TaideSettingsConfigurable"/>
+        <projectService serviceImplementation="edu.cst3492.taide.ui.settings.TaideUiSettings"/>
+        <notificationGroup id="TAIDE" displayType="BALLOON" isLogByDefault="true"/>
+    </extensions>
+
+    <actions>
+        <action id="taide.askAboutCode"
+                class="edu.cst3492.taide.action.AskTaideAction"
+                text="Ask TAIDE about This Code"
+                description="Explain the selected code with course material references"
+                icon="/icons/taide.svg">
+            <add-to-group group-id="EditorPopupMenu" anchor="last"/>
+        </action>
+
+        <!-- C-owned action registrations, intentionally inactive until C confirms classes.
+             Only taide.generateTests is frozen in TEAM.md; the other IDs and all class
+             names below are proposals. B must activate them only after C hands them over.
+
+        <action id="taide.generateTests"
+                class="edu.cst3492.taide.action.automation.GenerateTestsAction"
+                text="Generate JUnit Tests…">
+            <add-to-group group-id="EditorPopupMenu" anchor="last"/>
+        </action>
+        <action id="taide.generateCommitMessage"
+                class="edu.cst3492.taide.action.automation.GenerateCommitMessageAction"
+                text="Generate Commit Message…">
+            <add-to-group group-id="ToolsMenu" anchor="last"/>
+        </action>
+        <action id="taide.reviewCode"
+                class="edu.cst3492.taide.action.automation.ReviewCodeAction"
+                text="Review Code with Course Materials…">
+            <add-to-group group-id="EditorPopupMenu" anchor="last"/>
+        </action>
+        -->
+    </actions>
+</idea-plugin>

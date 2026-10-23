@@ -251,6 +251,14 @@ public interface SmartAction {
 
 **风险**：Swing 布局调试极耗时间。预案：第一天就把界面画成固定三块（历史区 / 输入区 / 状态区），不做响应式。
 
+#### B 实现进度记录（2026-10-23）
+
+- 已提交到工作区的 B 源码覆盖工具窗、对话与引用、代码上下文、右键问答、Provider/API Key/课件目录设置，以及可选的 A 知识库重建适配；具体类见 `src/main/java/edu/cst3492/taide/`。API Key 不进入持久化 XML，使用 IntelliJ `PasswordSafe`。
+- 离线演示实现为 `DemoTaideService`，所有回答和引用均标记为示例，不代表实际课程资料。A 的 `TaideService` 与重建服务尚未在此工作区提供；C 的 action 类名尚未交付，XML 注册保持注释状态。
+- `tools/verify-b.ps1` 对选区行号、聊天线程/取消/引用状态、引用路径边界及设置验证运行了 53 项纯 Java 检查，并用原生 Swing 组件生成八张截图。UI 与设置源码也已用本机 IntelliJ 2025.1.3.1 平台类库及 JBR 21 编译。
+- 插件面向 IntelliJ 2024.2；隔离 Gradle Wrapper 已准备，但本机下载 Gradle 发行包超时，且已安装的 PyCharm 不含 Java PSI 插件。因此 `runIde`、`buildPlugin`、Java PSI 上下文类的完整编译、IDE 内 1366×768 验收与 PDF/PPTX 页码深链均尚未验证，不能将 B-1 至 B-8 标记为全项验收完成。
+- [B 英文报告贡献草稿](TAIDE-B-English-Report-V1.0.0.docx)供全组整合使用。作业要求的报告五节标准标题未包含在当前仓库文档中；草稿用五个临时标题起草，需在报告定稿时对照作业原文调整并补全 A、C 内容及成员信息。
+
 ---
 
 ### 5.3 C — Automation & Release Lead
