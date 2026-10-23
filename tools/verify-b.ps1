@@ -19,7 +19,10 @@ $taideSources = @(
     Get-Item -LiteralPath (Join-Path $taideRoot 'src\main\java\edu\cst3492\taide\context\SelectionRange.java')
     Get-Item -LiteralPath (Join-Path $taideRoot 'src\main\java\edu\cst3492\taide\ui\settings\SettingsSnapshot.java')
     Get-Item -LiteralPath (Join-Path $taideRoot 'src\main\java\edu\cst3492\taide\ui\settings\SettingsValidation.java')
-    Get-ChildItem -LiteralPath (Join-Path $taideRoot 'src\test\java') -Filter '*.java' -Recurse
+    Get-Item -LiteralPath (Join-Path $taideRoot 'src\test\java\edu\cst3492\taide\context\SelectionRangeTest.java')
+    Get-Item -LiteralPath (Join-Path $taideRoot 'src\test\java\edu\cst3492\taide\ui\chat\ConversationControllerTest.java')
+    Get-Item -LiteralPath (Join-Path $taideRoot 'src\test\java\edu\cst3492\taide\ui\chat\CitationFilesTest.java')
+    Get-Item -LiteralPath (Join-Path $taideRoot 'src\test\java\edu\cst3492\taide\ui\settings\SettingsValidationTest.java')
     Get-Item -LiteralPath (Join-Path $taideRoot 'tools\preview\NativePreview.java')
 ) | ForEach-Object { $_.FullName }
 & $taideJavac -encoding UTF-8 --release 21 -d $taideClasses @taideSources

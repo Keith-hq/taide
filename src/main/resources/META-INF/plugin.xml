@@ -1,4 +1,4 @@
-<idea-plugin>
+<idea-plugin xmlns:xi="http://www.w3.org/2001/XInclude">
     <id>edu.cst3492.taide</id>
     <name>TAIDE</name>
     <version>0.1.0-SNAPSHOT</version>
@@ -34,25 +34,6 @@
             <add-to-group group-id="EditorPopupMenu" anchor="last"/>
         </action>
 
-        <!-- C-owned action registrations, intentionally inactive until C confirms classes.
-             Only taide.generateTests is frozen in TEAM.md; the other IDs and all class
-             names below are proposals. B must activate them only after C hands them over.
-
-        <action id="taide.generateTests"
-                class="edu.cst3492.taide.action.automation.GenerateTestsAction"
-                text="Generate JUnit Tests…">
-            <add-to-group group-id="EditorPopupMenu" anchor="last"/>
-        </action>
-        <action id="taide.generateCommitMessage"
-                class="edu.cst3492.taide.action.automation.GenerateCommitMessageAction"
-                text="Generate Commit Message…">
-            <add-to-group group-id="ToolsMenu" anchor="last"/>
-        </action>
-        <action id="taide.reviewCode"
-                class="edu.cst3492.taide.action.automation.ReviewCodeAction"
-                text="Review Code with Course Materials…">
-            <add-to-group group-id="EditorPopupMenu" anchor="last"/>
-        </action>
-        -->
     </actions>
+    <xi:include href="/META-INF/taide-automation.xml" xpointer="xpointer(/idea-plugin/*)"/>
 </idea-plugin>

@@ -32,6 +32,8 @@
 
 `src/standalone/resources/META-INF/plugin.xml` 提供独立沙箱入口。正式入口存在于 `src/main/resources/META-INF/plugin.xml` 时，构建自动使用正式入口。
 
+根构建按类使用 `integration-support/src/main/java` 中的共享接口；`src/main/java` 中存在同路径的正式类型时优先编译正式类型，保证每个契约只包含一个实现来源。
+
 独立沙箱提供动作入口和预览界面。真实生成使用下节约定的模型、检索与引用定位服务。
 
 ## 服务接入
@@ -64,7 +66,7 @@ AutomationServices.getInstance(project).bind(
 
 模型调用与检索在后台任务中执行。`LlmClient` 负责网络超时、重试与请求取消；自动化层在任务开始和结果交付前检查取消状态。已取消任务会释放占用状态，并停止展示结果。模型密钥由 A 的设置和安全存储负责，自动化模块使用已配置的客户端。
 
-B 的正式插件入口需要声明 Java 依赖并包含动作片段：
+B 的正式插件入口已声明 Java 依赖并包含动作片段：
 
 ```xml
 <idea-plugin xmlns:xi="http://www.w3.org/2001/XInclude">
@@ -75,7 +77,7 @@ B 的正式插件入口需要声明 Java 依赖并包含动作片段：
 </idea-plugin>
 ```
 
-以上内容合入 B 的完整入口，保留其插件 ID、工具窗、设置页和其他扩展。三个动作的注册集中在 `src/main/resources/META-INF/taide-automation.xml`。
+正式入口包含插件 ID、工具窗、设置页和其他扩展。三个动作的注册集中在 `src/main/resources/META-INF/taide-automation.xml`。
 
 ## JUnit 测试生成
 
@@ -139,7 +141,7 @@ Java 测试涵盖生成输入、JUnit 编译、非法输出、引用核验、暂
 
 测试报告位于 `build/reports/tests/test/`，界面样本位于 `build/reports/ui/`。自动化测试使用合成示例与固定模型响应。真实模型、真实课件及来源导航在三方服务绑定后执行集成验收。
 
-本地验收环境为 WSL2、JDK 21 和 IDEA Community 2024.2.4：57 项 Java 测试、11 项 Python 测试、插件结构校验通过，Plugin Verifier 的结论为 `Compatible`。英文技术资料收录了实际预览组件的[界面样本](automation/TECHNICAL_NOTES.md#ui-samples)，可用于团队报告。
+本地验收环境为 WSL2、JDK 21 和 IDEA Community 2024.2.4：61 项 Java 测试、11 项 Python 测试、插件结构校验通过，Plugin Verifier 的结论为 `Compatible`。其中四项集成测试执行 B 模块现有的 53 条选区、会话、引用路径与设置行为检查。兼容性报告列出设置模块对 `assertIsNonDispatchThread()` 的三处实验性 API 调用。英文技术资料收录了实际预览组件的[界面样本](automation/TECHNICAL_NOTES.md#ui-samples)，可用于团队报告。
 
 ### 模型连通性
 
@@ -164,6 +166,8 @@ Java 测试涵盖生成输入、JUnit 编译、非法输出、引用核验、暂
 验收覆盖真实模型生成的 JUnit 编译与执行、真实暂存区提交信息、课件引用完整性和通用知识审查。输入为示例代码、临时 Git 仓库和合成 JDBC 片段。默认构建使用固定模型样本，真实模型验收由上述参数显式开启，每次重新请求服务。
 
 报告位于 `build/reports/tests/live-model/`，JUnit XML 位于 `build/test-results/live-model/`，脱敏的生成结果及执行摘要位于 `build/reports/live-model/`。
+
+2026-10-23 的真实模型组件验收使用 `gpt-6-luna`，四项验收全部通过，生成的四个 JUnit 测试方法编译并执行成功。
 
 ### 人工验收
 

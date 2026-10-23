@@ -51,6 +51,12 @@ java {
 
 // 正式入口由 B 维护；独立沙箱使用相同的动作注册片段。
 sourceSets.main {
+    val supportRoot = file("integration-support/src/main/java")
+    java.srcDir(supportRoot)
+    java.exclude {
+        !it.isDirectory && it.file.toPath().startsWith(supportRoot.toPath())
+                && file("src/main/java/${it.path}").exists()
+    }
     if (!file("src/main/resources/META-INF/plugin.xml").exists()) {
         resources.srcDir("src/standalone/resources")
     }

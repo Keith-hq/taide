@@ -158,9 +158,11 @@ Python tests validate the connectivity probe and submission packager. The packag
 
 CI builds the plugin, runs tests, checks its structure, and invokes IntelliJ Plugin Verifier for the declared platform. A version-tag workflow validates the release version before publishing the installable ZIP.
 
-Component verification on WSL2 with JDK 21 and IntelliJ IDEA Community 2024.2.4 passes 57 Java tests and 11 Python tests. Plugin structure validation passes, and IntelliJ Plugin Verifier reports `Compatible` for build `IC-242.23726.103`.
+Component verification on WSL2 with JDK 21 and IntelliJ IDEA Community 2024.2.4 passes 61 Java tests and 11 Python tests. Four integration tests execute B's 53 existing selection, conversation, citation-path, and settings checks. The formal plugin descriptor includes the shared automation registration fragment alongside B's tool window and settings. Plugin structure validation passes, and IntelliJ Plugin Verifier reports `Compatible` for build `IC-242.23726.103`, with three experimental `assertIsNonDispatchThread()` API usages in the settings component.
 
 An opt-in live-model suite covers generated JUnit compilation and execution, a real staged Git diff, course citation integrity, and general-knowledge review. It uses synthetic code and course excerpts with the configured model. `-PliveModelTests=true` enables fresh network requests, while the default build remains repeatable with fixed fixtures. Credentials and the endpoint are supplied through environment variables; generated evidence remains under `build/reports/live-model/`.
+
+The live component acceptance run on October 23, 2026 used `gpt-6-luna` and passed all four cases. Its generated JUnit class compiled and executed four test methods successfully.
 
 The complete integration acceptance run uses A's configured model and course index together with B's navigation callback. Synthetic fixtures support repeatable component tests and UI inspection.
 

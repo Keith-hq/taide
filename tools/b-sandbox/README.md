@@ -1,7 +1,7 @@
 # B module sandbox
 
-An isolated build for reviewing B's native IntelliJ UI before A and C deliver their modules.
-It intentionally does not create or replace C's root Gradle build.
+An auxiliary build for reviewing the native IntelliJ UI and available automation actions.
+The root Gradle build provides the integrated test, packaging, and compatibility workflow.
 
 Requires JDK 21, IntelliJ Platform artifacts and network access on first build.
 
@@ -12,16 +12,16 @@ $env:JAVA_HOME = 'C:\path\to\jdk-21'
 ```
 
 The Gradle source set includes `src/main` plus `integration-support/src/main/java`.
-The latter reproduces TEAM §4 contracts solely for this sandbox. When A's same-named
-types arrive under `src/main`, remove the support directory from this source set;
-do not copy or package duplicate classes. The sandbox package is an explicit B demo,
-not an integrated production release.
+The latter supplies TEAM §4 contracts while the corresponding types are absent from
+`src/main`. Each formal type takes priority over its support copy during compilation.
+This sandbox package carries the `b-demo` version suffix.
 
 A registers its implementation as a project service for `TaideService` and implements
 the optional B-owned `KnowledgeBaseController` SPI for rebuild. B settings expose a
 snapshot and an off-EDT PasswordSafe accessor. Demo mode is clearly labelled and on
-by default. C's three action registrations remain XML comments until real class names
-and implementations are supplied. No runtime references to missing C classes.
+by default. C's actions use the shared `META-INF/taide-automation.xml` registration
+fragment and the project-level `AutomationServices` integration described in
+`docs/AUTOMATION.md`.
 
 SDK-free behavioral and native Swing visual checks:
 
