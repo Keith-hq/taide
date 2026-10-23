@@ -26,7 +26,7 @@ dependencies {
     testImplementation("org.junit.jupiter:junit-jupiter")
     testImplementation("org.apiguardian:apiguardian-api:1.1.2")
     testRuntimeOnly("org.junit.vintage:junit-vintage-engine")
-    testRuntimeOnly("org.junit.platform:junit-platform-launcher")
+    testImplementation("org.junit.platform:junit-platform-launcher")
 
     intellijPlatform {
         val localPlatform = providers.gradleProperty("localPlatformPath")
@@ -83,6 +83,7 @@ val testLauncher = javaToolchains.launcherFor {
 val testCompiler = javaToolchains.compilerFor {
     languageVersion = JavaLanguageVersion.of(21)
 }
+val liveModelTests = providers.gradleProperty("liveModelTests").map(String::toBoolean).orElse(false)
 
 tasks {
     register("validateReleaseVersion") {
@@ -98,12 +99,22 @@ tasks {
         options.release = 21
     }
     test {
-        useJUnitPlatform()
+        useJUnitPlatform {
+            if (!liveModelTests.get()) {
+                excludeTags("live-model")
+            }
+        }
+        outputs.upToDateWhen { !liveModelTests.get() }
+        outputs.doNotCacheIf("真实模型验收需要重新调用服务") { liveModelTests.get() }
+        if (liveModelTests.get()) {
+            reports.html.outputLocation.set(layout.buildDirectory.dir("reports/tests/live-model"))
+            reports.junitXml.outputLocation.set(layout.buildDirectory.dir("test-results/live-model"))
+        }
         javaLauncher.set(testLauncher)
         systemProperty("taide.test.javac", testCompiler.get().executablePath.asFile.absolutePath)
         systemProperty("java.awt.headless", "true")
         maxHeapSize = "1536m"
-        timeout.set(Duration.ofMinutes(5))
+        timeout.set(Duration.ofMinutes(if (liveModelTests.get()) 15 else 5))
         testLogging {
             events("failed", "skipped")
         }
