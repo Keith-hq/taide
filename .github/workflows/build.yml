@@ -1,0 +1,70 @@
+name: Build and Test
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: build-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+      - uses: gradle/actions/setup-gradle@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: requirements-tools.txt
+      - name: Test delivery tools
+        run: |
+          python -m pip install -r requirements-tools.txt
+          python -m unittest discover -s scripts/tests -v
+      - name: Build and validate plugin
+        run: |
+          ./gradlew build verifyPluginStructure --stacktrace
+          ./gradlew -p examples/junit-demo build --stacktrace
+      - name: Upload plugin and evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: taide-build-${{ github.sha }}
+          path: |
+            build/distributions/*.zip
+            build/reports/
+            build/test-results/
+          if-no-files-found: warn
+          retention-days: 14
+
+  compatibility:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+      - uses: gradle/actions/setup-gradle@v4
+      - name: Verify IntelliJ binary compatibility
+        run: ./gradlew verifyPlugin --stacktrace
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: taide-compatibility-${{ github.sha }}
+          path: build/reports/pluginVerifier/
+          if-no-files-found: warn
+          retention-days: 14
