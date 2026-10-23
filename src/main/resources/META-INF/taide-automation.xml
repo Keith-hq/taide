@@ -1,0 +1,23 @@
+<idea-plugin>
+  <extensions defaultExtensionNs="com.intellij">
+    <notificationGroup id="TAIDE Automation" displayType="BALLOON"/>
+  </extensions>
+  <actions>
+    <group id="taide.automation" text="TAIDE" popup="true">
+      <add-to-group group-id="EditorPopupMenu" anchor="last"/>
+      <add-to-group group-id="ToolsMenu" anchor="last"/>
+      <action id="taide.generateTests"
+              class="edu.cst3492.taide.action.automation.GenerateTestsAction"
+              text="Generate JUnit Tests..."
+              description="Generate scenario-based JUnit 5 tests for selected Java code"/>
+      <action id="taide.generateCommitMessage"
+              class="edu.cst3492.taide.action.automation.GenerateCommitMessageAction"
+              text="Generate Commit Message..."
+              description="Generate a Conventional Commit message for all staged files"/>
+      <action id="taide.courseReview"
+              class="edu.cst3492.taide.action.automation.CourseReviewAction"
+              text="Review Code Against Course..."
+              description="Review selected code with verified course references"/>
+    </group>
+  </actions>
+</idea-plugin>

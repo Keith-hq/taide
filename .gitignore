@@ -1,6 +1,7 @@
 # Gradle
 .gradle/
 build/
+.intellijPlatform/
 !gradle/wrapper/gradle-wrapper.jar
 
 # IntelliJ
@@ -24,6 +25,10 @@ Thumbs.db
 # Local secrets & materials — never commit
 local.properties
 .env
+.venv/
+__pycache__/
+*.pyc
+submission/
 course-materials/
 index/
 *.pdf

@@ -1,0 +1,29 @@
+name: Release Plugin
+
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+      - uses: gradle/actions/setup-gradle@v4
+      - name: Validate version and build
+        run: ./gradlew validateReleaseVersion build buildPlugin verifyPluginStructure verifyPlugin --stacktrace
+      - name: Publish plugin archive
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: >-
+          gh release create "$GITHUB_REF_NAME" build/distributions/*.zip
+          --verify-tag --title "TAIDE $GITHUB_REF_NAME"
+          --notes "TAIDE IntelliJ IDEA 插件。运行平台：IntelliJ IDEA 2024.2，Java 21。安装与集成说明见 docs/AUTOMATION.md。"
