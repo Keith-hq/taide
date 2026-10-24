@@ -140,7 +140,8 @@ def package(repo, report, slides, team_file, plugin, output):
         if relative.parts[0] in PRIVATE_PARTS or relative.name in {".env", "local.properties"}:
             raise ValueError(f"源码中包含本地私有配置或材料：{name}")
         target = "documents/reference/" + name[5:] if name.startswith("docs/") else "source/" + name
-        mode = 0o755 if source.stat().st_mode & stat.S_IXUSR else 0o644
+        # NTFS does not expose POSIX execute bits; every Gradle wrapper must still run after extraction.
+        mode = 0o755 if relative.name == "gradlew" or source.stat().st_mode & stat.S_IXUSR else 0o644
         entries[target] = (source.read_bytes(), mode)
     entries["documents/report.pdf"] = (Path(report).read_bytes(), 0o644)
     entries["documents/slides.pdf"] = (Path(slides).read_bytes(), 0o644)

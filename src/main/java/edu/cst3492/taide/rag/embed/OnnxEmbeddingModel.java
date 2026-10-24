@@ -16,7 +16,7 @@ import java.util.Map;
  * states, so vectors are mean-pooled over real tokens and L2-normalized, matching
  * the sentence-transformers reference (so dot product equals cosine similarity).
  */
-public final class OnnxEmbeddingModel implements EmbeddingModel {
+public final class OnnxEmbeddingModel implements EmbeddingModel, AutoCloseable {
 
     public static final String MODEL_NAME = "all-MiniLM-L6-v2";
     public static final int DIMENSION = 384;
@@ -27,15 +27,21 @@ public final class OnnxEmbeddingModel implements EmbeddingModel {
     private final BertTokenizer tokenizer;
 
     public OnnxEmbeddingModel(Path modelPath, Path vocabPath) throws IOException {
+        this.tokenizer = new BertTokenizer(vocabPath);
         try {
             this.environment = OrtEnvironment.getEnvironment();
-            OrtSession.SessionOptions options = new OrtSession.SessionOptions();
-            options.setIntraOpNumThreads(Runtime.getRuntime().availableProcessors());
-            this.session = environment.createSession(modelPath.toString(), options);
+            try (OrtSession.SessionOptions options = new OrtSession.SessionOptions()) {
+                options.setIntraOpNumThreads(Runtime.getRuntime().availableProcessors());
+                this.session = environment.createSession(modelPath.toString(), options);
+            }
         } catch (OrtException e) {
             throw new IOException("Failed to load embedding model " + modelPath, e);
         }
-        this.tokenizer = new BertTokenizer(vocabPath);
+    }
+
+    @Override public void close() throws IOException {
+        try { session.close(); }
+        catch (OrtException e) { throw new IOException("Failed to close the embedding session", e); }
     }
 
     /**
@@ -61,11 +67,16 @@ public final class OnnxEmbeddingModel implements EmbeddingModel {
         String value = property != null && !property.isBlank() ? property
                 : env != null && !env.isBlank() ? env : null;
         Path dir = value != null ? Path.of(value) : fallbackDir;
+        return openDirectory(dir);
+    }
+
+    /** Opens the explicitly selected IDE directory without reapplying developer overrides. */
+    public static OnnxEmbeddingModel openDirectory(Path dir) throws IOException {
         Path model = dir.resolve("model.onnx");
         Path vocab = dir.resolve("vocab.txt");
         if (!Files.exists(model) || !Files.exists(vocab)) {
             throw new IOException("Model files not found in " + dir
-                    + " (set TAIDE_MODEL_DIR; expected model.onnx and vocab.txt)");
+                    + " (expected model.onnx and vocab.txt; prepare the model in Settings → Tools → TAIDE)");
         }
         return new OnnxEmbeddingModel(model, vocab);
     }

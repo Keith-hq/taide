@@ -4,14 +4,17 @@ import com.intellij.openapi.editor.Document;
 import com.intellij.openapi.editor.Editor;
 import com.intellij.openapi.editor.SelectionModel;
 import com.intellij.openapi.fileEditor.FileDocumentManager;
+import com.intellij.openapi.progress.ProgressManager;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.util.TextRange;
 import com.intellij.openapi.vfs.VirtualFile;
 import com.intellij.psi.PsiClass;
+import com.intellij.psi.PsiComment;
 import com.intellij.psi.PsiDocumentManager;
 import com.intellij.psi.PsiElement;
 import com.intellij.psi.PsiFile;
 import com.intellij.psi.PsiJavaFile;
+import com.intellij.psi.PsiWhiteSpace;
 import com.intellij.psi.util.PsiTreeUtil;
 import edu.cst3492.taide.service.CodeContext;
 import org.jetbrains.annotations.NotNull;
@@ -88,20 +91,21 @@ public final class CodeContextExtractor {
 
     private static @NotNull String findEnclosingClass(@NotNull PsiFile file,
                                                      @NotNull SelectionSnapshot snapshot) {
-        if (file.getTextLength() == 0) {
+        int start = snapshot.startOffset();
+        int end = Math.min(file.getTextLength(), start + snapshot.selectedText().length());
+        if (start >= end) {
             return "";
         }
-        // Leading indentation is outside the class node when an entire class is selected.
-        // Probe the first non-whitespace character of the selected text in that case.
-        int firstCodeCharacter = 0;
-        while (firstCodeCharacter < snapshot.selectedText().length()
-                && Character.isWhitespace(snapshot.selectedText().charAt(firstCodeCharacter))) {
-            firstCodeCharacter++;
+        // Ignore boundary comments as well as indentation: a whole-class selection often
+        // starts at a file-level comment. Use both ends so a selection across sibling or
+        // nested classes is never incorrectly attributed to only its first class.
+        PsiElement first = boundaryCodeElement(file, start, end, true);
+        PsiElement last = boundaryCodeElement(file, start, end, false);
+        if (first == null || last == null) {
+            return "";
         }
-        int offset = Math.min(file.getTextLength() - 1,
-                snapshot.startOffset() + Math.min(firstCodeCharacter, snapshot.selectedText().length() - 1));
-        PsiElement element = file.findElementAt(offset);
-        PsiClass enclosing = PsiTreeUtil.getParentOfType(element, PsiClass.class, false);
+        PsiElement common = PsiTreeUtil.findCommonParent(first, last);
+        PsiClass enclosing = PsiTreeUtil.getParentOfType(common, PsiClass.class, false);
         if (enclosing == null) {
             return "";
         }
@@ -110,6 +114,30 @@ public final class CodeContextExtractor {
             name = enclosing.getName();
         }
         return name == null ? "" : name;
+    }
+
+    private static @Nullable PsiElement boundaryCodeElement(@NotNull PsiFile file,
+                                                            int start, int end,
+                                                            boolean forwards) {
+        int offset = forwards ? start : end - 1;
+        while (offset >= start && offset < end) {
+            ProgressManager.checkCanceled();
+            PsiElement element = file.findElementAt(offset);
+            if (element == null) {
+                return null;
+            }
+            // Javadoc tokens are descendants of a PsiComment rather than comments
+            // themselves, so skip their containing comment in one step.
+            PsiComment comment = PsiTreeUtil.getParentOfType(element, PsiComment.class, false);
+            PsiElement ignored = comment != null ? comment : element instanceof PsiWhiteSpace ? element : null;
+            if (ignored == null) {
+                return element;
+            }
+            TextRange range = ignored.getTextRange();
+            offset = forwards ? Math.max(offset + 1, range.getEndOffset())
+                    : Math.min(offset - 1, range.getStartOffset() - 1);
+        }
+        return null;
     }
 
     /** Immutable text/position values plus the original document only for the short PSI lookup. */

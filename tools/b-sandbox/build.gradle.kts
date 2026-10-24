@@ -42,7 +42,7 @@ sourceSets {
 }
 intellijPlatform {
     pluginConfiguration {
-        ideaVersion { sinceBuild.set("242"); untilBuild.set("243.*") }
+        ideaVersion { sinceBuild.set("242"); untilBuild.set("242.*") }
     }
     buildSearchableOptions.set(false)
 }

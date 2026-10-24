@@ -22,6 +22,10 @@
                              displayName="TAIDE"
                              instance="edu.cst3492.taide.ui.settings.TaideSettingsConfigurable"/>
         <projectService serviceImplementation="edu.cst3492.taide.ui.settings.TaideUiSettings"/>
+        <projectService serviceInterface="edu.cst3492.taide.service.TaideService"
+                        serviceImplementation="edu.cst3492.taide.service.TaideServiceImpl"/>
+        <projectService serviceInterface="edu.cst3492.taide.ui.integration.KnowledgeBaseController"
+                        serviceImplementation="edu.cst3492.taide.ui.integration.ProjectKnowledgeBaseController"/>
         <notificationGroup id="TAIDE" displayType="BALLOON" isLogByDefault="true"/>
     </extensions>
 

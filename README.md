@@ -4,13 +4,10 @@
 
 <h1>TAIDE · 住在 IDE 里的课程助教</h1>
 
-<p>
-<b>面向 CST3492 的 IntelliJ IDEA 插件</b><br/>
-用带引用的 RAG 回答课程问题，顺手把 JUnit 测试和提交信息也写了
-</p>
+<p><b>面向 CST3492 的 IntelliJ IDEA 插件</b><br/>检索课程材料、流式问答，并在编辑器中执行智能动作</p>
 
 <p>
-  <img src="https://img.shields.io/badge/状态-开发中-f59e0b?style=for-the-badge" alt="status"/>
+  <img src="https://img.shields.io/badge/状态-集成验收中-f59e0b?style=for-the-badge" alt="status"/>
   <img src="https://img.shields.io/badge/课程-CST3492-2563EB?style=for-the-badge" alt="course"/>
   <img src="https://img.shields.io/badge/组别-Group_B-8B5CF6?style=for-the-badge" alt="group"/>
   <img src="https://img.shields.io/badge/版本-0.1.0_SNAPSHOT-9CA3AF?style=for-the-badge" alt="version"/>
@@ -18,10 +15,9 @@
 
 <p>
   <a href="#-这是什么">这是什么</a> ·
-  <a href="#-功能">功能</a> ·
+  <a href="#-功能与当前状态">功能</a> ·
   <a href="#-技术栈">技术栈</a> ·
   <a href="#-架构">架构</a> ·
-  <a href="#-rag-管道">RAG 管道</a> ·
   <a href="#-快速开始">快速开始</a> ·
   <a href="docs/TEAM.md">分工与协作</a>
 </p>
@@ -29,217 +25,224 @@
 </div>
 
 > [!IMPORTANT]
-> **当前状态：B 组界面与选区上下文首版已实现，仍待全组集成。**
-> B 负责的工具窗、流式聊天 UI、引用展示、右键代码上下文、项目设置和索引重建适配首版已落地；UI 可脱离 IDE 独立渲染检查，插件沙箱启动和全组集成尚待验证。
-> 演示模式只返回标记过的固定示例；真实问答、课件索引和 C 组自动化动作尚待各负责人接入和端到端验收。最后更新：2026-10-23。
+> **当前状态：A 的问答与索引服务、B 的原生界面、C 的自动化动作代码已合入，正在进行集成验收。**
+> 默认开启演示模式，只生成明确标注的固定示例。首次使用引导可下载并配置本地检索模型；准备课件与模型 API Key、重建知识库后，再显式切换真实问答。
+> F1 三个动作已有菜单与实现，其模型、检索和引用导航仍需按 [自动化接入约定](docs/AUTOMATION.md#服务接入)绑定；不能将其视为已与聊天服务自动接通。最后更新：2026-10-24。
 
 ---
 
 ## 💡 这是什么
 
-TAIDE 是一个**课程专属的助教**，装在 IntelliJ IDEA 里，为 *CST3492 — Java 企业级应用开发*（2026/27 学年第一学期，B 组）服务。
+TAIDE 为 **CST3492 — Java 企业级应用开发**（2026/27 学年第一学期，Group B）提供 IDE 内的课程助教。它从本地 PDF/PPTX 检索相关片段，再调用兼容 OpenAI API 的模型生成回答；引用卡片中的文档与页码来自检索元数据。检索未命中时，回答进入通用知识模式，引用列表为空。
 
-通用聊天机器人靠训练数据回答，助教得**照着课件回答**，而且要能拿出证据。TAIDE 把课程材料预处理成可检索的知识块，针对每个问题召回真正相关的那几段，再逼模型标注出处。当课件里确实没有相关内容时，它会明说，而不是编一个。
+编辑器选区可以附带文件路径、语言、行号与所属类送入对话。智能动作另外提供 JUnit 测试生成、Conventional Commit 提交信息生成与课件感知代码审查。
 
-在此之上，它还自动化三件重复劳动：按一句自然语言需求写 JUnit 测试、读暂存区 diff 生成 Conventional Commit 提交信息、以及**对照课件规范审查代码**。
+## ✨ 功能与当前状态
 
----
+| 范围 | 功能 | 当前代码与使用边界 |
+|:--|:--|:--|
+| **F0.1** | 课程 RAG 问答 | PDF/PPTX 摄取、切块、ONNX 嵌入、JSON 索引、检索与流式客户端已实现；真实模式需准备模型、索引和凭据 |
+| **F0.2** | 来源引用 | 显示文档、1-based 页码、命中片段与真实检索分数；演示引用标记为示例且隐藏虚构分数；打开文件后提示手动定位页码 |
+| **F0.3** | 原生聊天工具窗 | 右侧 TAIDE 面板，消息历史、流式输出、代码块复制、停止生成、重试与新会话；每条消息保留发送时的演示/真实来源与课件目录 |
+| **F0.4** | 选区上下文 | 选中代码右键 → `Ask TAIDE about This Code`；无选区时置灰，Java 文件补充所属类 |
+| **首次使用** | 模型准备与引导 | 展示模型、API/课件与索引准备状态；用户点击后下载并校验模型，也可选择已有目录；不会自动退出演示模式 |
+| **F1.1** | JUnit 测试生成 | 动作、语法校验、可编辑预览、创建文件与撤销已实现；真实模型服务待项目级接入 |
+| **F1.2** | 提交信息生成 | 暂存区差异、Conventional Commit 预览、复制与确认后本地提交已实现；真实模型服务待项目级接入 |
+| **F1.3** | 课件感知代码审查 | 结构化问题与引用核验已实现；真实模型、检索器和来源导航回调待接入 |
 
-## ✨ 功能
+**引用定位边界：** 当前通过 IDE 打开本地源文件，并显示页码提示。PDF/PPTX 能否直接预览取决于本机 IDE 的文件处理能力；尚未实现跳转到指定页的深链。演示引用只显示说明，不会打开同名真实课件。
 
-### F0 — 核心助教（全组必做）
-
-| | 功能 | 说明 | 状态 |
-|:--|:--|:--|:--:|
-| **F0.1** | 🔍 **RAG 问答** | 课件切块建索引，每个问题召回 top-k 相关片段，作为上下文喂给 LLM | 🟡 A 实现中 |
-| **F0.2** | 📌 **来源引用** | 每个有依据的回答都标注 `文档 · 页码`；无依据时显式标注「基于通用知识，未引用课件」 | 🟡 UI 就绪，待接真实服务 |
-| **F0.3** | 💬 **工具窗界面** | 停靠在 IDE 里的对话面板：消息历史、流式输出、可点击的引用卡片 | 🟡 B 首版待 IDE 启动验收 |
-| **F0.4** | 🖱️ **上下文感知** | 选中代码右键 → *Ask TAIDE about this code*，选区内容自动注入提示词 | 🟡 B 首版待 IDE 启动验收 |
-
-### F1 — 智能动作（Group B 范围，由 C 组负责实现）
-
-| | 功能 | 说明 | 状态 |
-|:--|:--|:--|:--:|
-| **F1.1** | 🧪 **JUnit 测试生成** | 弹窗收一句自然语言场景（「用户 ID 不存在」），结合选中的类/方法生成 JUnit 5 测试类，写入 `src/test/java` | ⚪ C 待集成 |
-| **F1.2** | 📝 **提交信息生成** | 读取暂存区 diff，判断语义意图（feat / fix / refactor），按 Conventional Commits 起草，可编辑后提交 | ⚪ C 待集成 |
-| **F1.3** | 🎓 **课件感知代码审查** | *自创动作。* 对照**课件讲授的规范**审查选中的代码，每条问题都带课件引用 | ⚪ C 待集成 |
-
-<sub>⚪ 待开始 / 待集成 · 🟡 进行中或等待集成 · 🟢 当前负责人首版已完成；全组端到端验收另计</sub>
-
-**为什么把 F1.3 定为自创动作。** 另外两个自动化是通用的，市面上已有。而「指出这段代码违反了第 4 讲第 17 页讲的写法，并附上那一页」——没有现成工具能做到。它复用了已经建好的 RAG 管道，边际成本低；演示时观众可以当场打开被引用的那一页核对，这是最有说服力的一个功能。
-
----
+每条历史消息使用发送时保存的课件目录打开引用。之后切换设置中的目录或演示模式，不会把已有引用指向新目录中的同名文件。
 
 ## 🛠️ 技术栈
 
-<h3 align="center">运行时与平台</h3>
-
-<p align="center">
-  <img src="https://img.shields.io/badge/Java-21-ED8B00?style=for-the-badge&logo=openjdk&logoColor=white" alt="Java 21"/>
-  <img src="https://img.shields.io/badge/IntelliJ_Platform-2024.2+-000000?style=for-the-badge&logo=intellijidea&logoColor=white" alt="IntelliJ Platform"/>
-  <img src="https://img.shields.io/badge/Gradle-8.x-02303A?style=for-the-badge&logo=gradle&logoColor=white" alt="Gradle"/>
-</p>
-
-<h3 align="center">RAG 与模型</h3>
-
-<p align="center">
-  <img src="https://img.shields.io/badge/LangChain4j-1.x-1C3C3C?style=for-the-badge" alt="LangChain4j"/>
-  <img src="https://img.shields.io/badge/Apache_Tika-3.x-D22128?style=for-the-badge&logo=apache&logoColor=white" alt="Apache Tika"/>
-  <img src="https://img.shields.io/badge/ONNX_MiniLM-本地嵌入-005CED?style=for-the-badge" alt="ONNX"/>
-  <img src="https://img.shields.io/badge/DeepSeek-API-4D6BFE?style=for-the-badge&logo=deepseek&logoColor=white" alt="DeepSeek"/>
-</p>
-
-<h3 align="center">工程与测试</h3>
-
-<p align="center">
-  <img src="https://img.shields.io/badge/JUnit-5-25A162?style=for-the-badge&logo=junit5&logoColor=white" alt="JUnit 5"/>
-  <img src="https://img.shields.io/badge/JGit-7.x-F05032?style=for-the-badge&logo=git&logoColor=white" alt="JGit"/>
-  <img src="https://img.shields.io/badge/GitHub_Actions-CI-2088FF?style=for-the-badge&logo=githubactions&logoColor=white" alt="CI"/>
-</p>
-
----
+| 层次 | 实际采用 | 用途 |
+|:--|:--|:--|
+| 运行与构建 | **JDK 21**、根 Gradle Wrapper **8.13**、IntelliJ Platform Gradle Plugin **2.5.0** | 编译、测试、隔离 IDE、插件打包 |
+| 目标平台 | IntelliJ IDEA Community **2024.2.4**，兼容范围 **242.\***，依赖 Java 插件 | 工具窗、项目服务、设置、编辑器与 Java PSI |
+| 界面 | 原生 **Swing / IntelliJ UI** | 聊天面板、设置页、引用卡片与智能动作预览 |
+| HTTP 与 JSON | JDK **java.net.http**、Gson **2.12.1** | OpenAI 兼容 `/chat/completions`、SSE 流式响应、索引序列化 |
+| 材料解析 | PDFBox **3.0.5**、POI XSLF **5.4.1** | PDF 逐页、PPTX 逐张幻灯片提取文本与备注 |
+| 本地嵌入 | ONNX Runtime **1.20.0**、`all-MiniLM-L6-v2` | 384 维向量；模型不随插件打包，首次使用可按需下载或选择已有目录 |
+| 索引 | 内存余弦检索、JSON 文件 | 内容哈希复用、阈值过滤、MMR 去重 |
+| 自动化与测试 | JavaParser **3.26.3**、JGit **7.1.0**、JUnit **5.11.4** | 生成代码校验、暂存区操作、单元及 IntelliJ 平台测试 |
+| 凭据 | IntelliJ **PasswordSafe** | API Key 按项目、Provider 与 API 端点隔离保存，不写入配置 XML |
 
 ## 🏗️ 架构
 
 ```mermaid
 flowchart LR
-    subgraph IDE["IntelliJ IDEA"]
-        UI["工具窗<br/>对话面板"]
-        ACT["右键菜单<br/>智能动作"]
-        CTX["代码上下文<br/>提取器"]
-    end
-
-    subgraph CORE["TAIDE Core"]
-        SVC["TaideService"]
-        RET["Retriever"]
-        IDX["向量索引<br/>（落盘）"]
-        ING["Ingestor<br/>Tika + Chunker"]
-        LLM["LlmClient"]
-        CIT["引用构建器"]
-    end
-
-    MAT["课程材料<br/>PDF / PPTX"]
-    API["LLM API<br/>DeepSeek / 同济 AGI"]
-
-    MAT --> ING --> IDX
-    IDX --> RET
-    UI --> SVC
-    ACT --> SVC
-    CTX --> SVC
-    SVC --> RET
-    RET --> CIT --> SVC
-    SVC --> LLM --> API
+    UI["Swing 聊天工具窗"] --> SVC["项目级 TaideServiceImpl"]
+    CTX["编辑器选区 / Java PSI"] --> UI
+    SETTINGS["设置 / PasswordSafe"] --> SVC
+    SETUP["首次使用引导 / 模型设置"] --> MODELSETUP["应用级 ModelSetupService"] --> MODEL
+    REBUILD["Rebuild 设置按钮"] --> ADAPTER["ProjectKnowledgeBaseController"] --> SVC
+    MAT["本地 PDF / PPTX"] --> ING["PDFBox / POI → 页内切块"]
+    MODEL["本地 ONNX 模型"] --> EMB["嵌入"]
+    ING --> EMB --> IDX["JSON 索引"] --> RET["余弦检索 / MMR"]
+    RET --> SVC --> LLM["OpenAI 兼容 HTTP / SSE"] --> API["模型 API"]
     SVC --> UI
+    ACT["C 的三个智能动作"] --> AUTO["AutomationServices"]
+    BIND["待接入的 LlmClient / Retriever / 导航回调"] -. "项目级 bind" .-> AUTO
 ```
 
-**三个可以拿去答辩的设计决策：**
+聊天与重建通过同一个项目级服务实例共享资源。设置或凭据更新会使缓存失效；重建成功后切换索引，模型会话在资源不再使用或项目关闭时释放。重建发布前检查取消状态，取消不会把未完成索引替换为当前索引；完成发布后的取消会如实显示已完成状态。
 
-1. **页边界不可跨越。** 切块永远不跨页，因此每个块都携带精确的 `(文件, 页码)`。这是引用既便宜又诚实的原因——反过来，先按固定窗口切全文、事后再还原页码，只会得到一堆对不上的出处。
-2. **嵌入在本地跑。** `all-MiniLM-L6-v2` 以 ONNX 形式随插件分发。不需要 embedding API Key，没有按次计费，断网也能演示。唯一的网络依赖是 LLM 调用。
-3. **索引是一个文件，不是数据库。** 几千个块完全可以放进内存。序列化成 JSON 落到插件配置目录，构建简单，整条管道用文本编辑器就能检查。如果语料真的涨到装不下，换 SQLite 即可——`VectorIndex` 接口就是那道缝。
+模型准备由应用级服务管理，所有项目共享已校验的文件，切换模型目录会使项目问答资源失效并在后续请求中重新加载。关闭设置页不会中断下载，可从 IDE 后台任务进度取消。
 
----
+### RAG 管道
 
-## 🔬 RAG 管道
+| 阶段 | 当前实现 |
+|:--|:--|
+| 解析与切块 | PDFBox / POI 保留 1-based 页码；不跨页切块，目标约 512 token、重叠约 64 token，长度使用估算 |
+| 嵌入 | 本地 MiniLM ONNX，WordPiece 分词、均值池化与 L2 归一化，384 维 |
+| 索引 | JSON 原子写入，按内容哈希复用旧向量；放在 IDE 配置目录 |
+| 检索 | 问答请求最多 8 条，先取候选，再按 **0.45** 阈值过滤，使用 **λ=0.7** 的 MMR 去重 |
+| 回答 | 命中片段参与提示词；无命中时 `grounded=false`、引用为空；流式 token 由 B 在 EDT 批量展示 |
+| 引用 | 由召回块的文档、页码与片段构建卡片；模型输出仍需结合来源人工核对 |
 
-| 阶段 | 做法 | 说明 |
-|:--|:--|:--|
-| **1. 解析** | Apache Tika，逐页解析 | PDF 取页面框；PPTX 逐张幻灯片取文本，含备注 |
-| **2. 切块** | 页内递归切分，目标 **512 token**，重叠 **64** | 绝不跨页——保住引用的粒度 |
-| **3. 嵌入** | `all-MiniLM-L6-v2`（ONNX，384 维），批量 + 按内容哈希缓存 | 离线可跑，CPU 上约 5 ms/块 |
-| **4. 索引** | 内存中的余弦相似度存储，JSON 持久化 | 按文件 mtime + 哈希判断是否需要重建 |
-| **5. 检索** | top-k = 8 → 相似度阈值 0.35 → **MMR**（λ = 0.7）去重 | 阈值在 20 题评测集上调出来 |
-| **6. 判定** | top-1 分数低于阈值 → 进入「通用知识」模式，不输出引用 | 防止编造出处 |
-| **7. 引用** | 块元数据 → `[第 05 讲 · 第 12 页]`，可点击打开源 PDF | 引用由元数据生成，**绝不交给模型写** |
-
----
+性能和检索质量取决于本机硬件与材料；团队已记录的语料与评测结果见 [TEAM 中 A 的实现记录](docs/TEAM.md#51-a--rag--llm-core-lead)。
 
 ## 🚀 快速开始
 
-当前可独立运行的是 B 模块演示沙箱，需 JDK 21；首次构建会下载 Gradle 和 IntelliJ 平台依赖。
+### 1. 构建与启动正式插件
+
+安装 JDK 21 后，在仓库根目录运行。首次执行需要网络下载 Gradle、IDE SDK 和依赖。
 
 ```powershell
-# 1. 克隆
 git clone https://github.com/Keith-hq/taide.git
 cd taide
-
-# 2. 运行不依赖 IDE SDK 的行为检查，并生成原生 Swing 预览
-.\tools\verify-b.ps1 -JavaHome 'C:\path\to\jdk-21'
-
-# 3. 配置 JDK，启动带 B 模块的隔离 IDE
 $env:JAVA_HOME = 'C:\path\to\jdk-21'
-.\tools\b-sandbox\run.ps1 runIde
+.\gradlew.bat build buildPlugin verifyPluginStructure
+.\gradlew.bat runIde
 ```
 
-详细说明见 [B 沙箱运行指南](tools/b-sandbox/README.md)。当前沙箱默认使用固定示例回答；真实模型、课件索引及 C 的动作需集成后验收。根目录正式构建由 C 提供。
+macOS/Linux 使用 `./gradlew`。安装包位于 `build/distributions/taide-0.1.0-SNAPSHOT.zip`，可在 IDEA 的 `Settings → Plugins → Install Plugin from Disk` 安装。二进制兼容性检查命令为 `.\gradlew.bat verifyPlugin`。
 
-**集成后配置模型** —— *Settings → Tools → TAIDE*：
+已有 **IDEA Community 2024.2.4（含 Java 插件）** 时，可给 Gradle 添加 `-PlocalPlatformPath=C:\path\to\idea` 复用安装；PyCharm 缺少所需 Java PSI，不能替代此 SDK。
 
-| 字段 | 值 |
-|:--|:--|
-| Provider | `DeepSeek` / `AGI（同济）` |
-| API Key | 你自己的 Key |
-| Model | `deepseek-chat` |
-| 课件目录 | 存放讲义 PDF/PPTX 的文件夹 |
+### 2. 预览 B 界面与默认演示
 
-然后在设置页点 **Rebuild Knowledge Base**。10 份讲义首次建索引约 30 秒，之后走缓存。
+无需 IDE SDK 的行为检查与原生 Swing 渲染：
 
-> 插件**不内置**任何 API Key，也**不附带**课程材料，两者都由使用者本地提供。
+```powershell
+.\tools\verify-b.ps1 -JavaHome 'C:\path\to\jdk-21'
+```
 
----
+结果位于 `build/b-verification/`，14 张界面截图位于其 `screenshots/`。这会渲染实际 `ChatPanel`，覆盖窄停靠窗和 1366×768 等尺寸；不等于已在真实 IDE 中完成人工验收。
+
+在启动的 IDE 中通过 `View → Tool Windows → TAIDE` 打开面板。默认勾选 `Use demo service`，聊天返回固定示例，支持检查流式显示、复制、取消和引用状态。演示模式不调用模型、不读取课件，也不替 C 的自动化动作提供服务。
+
+[B 辅助沙箱](tools/b-sandbox/README.md)使用同一套源码与正式扩展注册，适合界面审查；根构建负责集成测试、正式安装包和兼容性检查。
+
+### 3. 配置真实课程问答
+
+1. 打开 `View → Tool Windows → TAIDE`。首次使用引导会展示检索模型、API/课件与知识库的准备状态；默认仍使用演示答案。
+2. 点击 **下载并配置**，或在 `Settings → Tools → TAIDE → 本地检索模型` 中使用同名按钮。插件仅在点击后联网，在后台准备约 **90 MB** 的官方 `all-MiniLM-L6-v2` 模型 `model.onnx` 与词表 `vocab.txt`，显示下载进度并校验完整性。无需 PowerShell、环境变量或重新启动 IDE。
+3. 已有模型时，在上述设置页点击 **使用已有目录…**，选择同时包含两个文件的目录并等待校验通过；需要切回插件管理的目录时点击 **使用默认目录**。已有文件须与插件固定版本匹配，仅有相同文件名不足以通过校验。
+4. 把本地 PDF/PPTX 课件直接放在同一个可读文件夹中；当前摄取不递归扫描子目录，也不对扫描版 PDF 做 OCR。
+5. 在 `Settings → Tools → TAIDE` 选择 Provider，填写 API base URL、Model ID、API Key 和 Course directory。DeepSeek 默认基址为 `https://api.deepseek.com`、模型为 `deepseek-chat`；AGI 使用学校提供的兼容基址和模型名称。
+6. 点 **Apply** 保存配置，再点 **Rebuild Knowledge Base**。模型未就绪时重建按钮禁用。索引在后台构建并显示进度，可在发布新索引前取消；已完成的重建不会因取消设置对话框而撤销。
+7. 准备完成后，在工具窗点击 **切换真实问答**；也可在设置页取消勾选 **Use demo service** 并点 **Apply / OK**。下载成功不会自动关闭演示模式。发送新问题检查引用；未命中时应显示通用知识提示且没有课件引用，已有演示历史继续标为示例。
+
+引导中的 API 状态仅检查是否已填写合法的地址、模型名称及已保存的 Key，**不等于已验证网络连通、Key 有效或账户余额充足**。真实 API 是否可用，以发送问题后的实际响应为准。
+
+#### 模型保存、离线使用与下载失败
+
+下载来自 [sentence-transformers 官方 MiniLM 仓库的固定版本](https://huggingface.co/sentence-transformers/all-MiniLM-L6-v2/tree/1110a243fdf4706b3f48f1d95db1a4f5529b4d41)，采用 Apache 2.0 许可。插件按固定文件大小与 SHA-256 校验两个文件，成功后保存到 **`<IDE config>/taide/model/`**；同一 IDE 配置下所有项目共享，已校验的缓存可离线复用。下载文件不进入项目仓库，模型准备也不会替用户申请 API Key 或建立课件索引。
+
+下载连接使用 IDE 的 HTTP Proxy 配置。若超时或连接失败，打开 **`Settings → Appearance & Behavior → System Settings → HTTP Proxy`**，按自己的网络环境配置后重试；也可从可联网的机器复制固定版本的完整模型目录，使用 **使用已有目录…**。下载可取消，未完整校验的文件不会被当作可用模型。
+
+开发和 CLI 仍兼容 `TAIDE_MODEL_DIR` 环境变量与 `taide.model.dir` JVM 属性。**IDE 设置中显式选择的目录（包括“使用默认目录”）优先**；没有显式选择时，才依次读取 JVM 属性、环境变量和默认目录。环境变量只会被随后启动的 IDE 继承，普通用户无需设置它。
+
+索引保存在 `<IDE config>/taide/index/<project-hash>.json`。API Key 保存在 PasswordSafe，按**项目 + Provider + 端点**隔离；切换到新的 API 端点需填写该端点的 Key。从旧版凭据存储升级后，也需重新输入一次 Key。Key 留空会保留当前端点已有凭据，删除需勾选对应的移除选项。
+
+> 插件不内置 API Key、课程材料或嵌入模型。真实问题及选区代码会随请求发往你配置的模型服务；请先确认配置与发送内容。
+
+### 4. 验证与协作
+
+```powershell
+# 默认跳过标为 live-model 的真实模型测试
+.\gradlew.bat test
+
+# 只执行 B 的 Java PSI 上下文平台测试
+.\gradlew.bat test --tests '*CodeContextExtractorPlatformTest'
+```
+
+本次模型准备与引导验收（2026-10-24）：**97 项纯 JDK 行为检查通过**，生成 14 张原生聊天截图及 2 张设置页截图；目标 IDE 2024.2.4 的 Gradle 套件共 **170 项测试：168 通过、2 跳过**，跳过项均为 Windows 本机缺少符号链接创建权限的夹具。`buildPlugin`、`verifyPluginStructure` 与 `verifyPlugin` 均通过，兼容检查保留 6 处线程断言的实验性 API 提示。另用真实约 90 MB 模型验证了完整安装、SHA-256 校验、缓存复用及显式目录 ONNX 推理。安装器网络回归使用本地 HTTP/mock；本次没有调用真实问答 API，也未把该套件视为 IDE 内真实联网下载和完整课程问答的人工验收。PDF/PPTX 指定页深链仍未实现。
+
+`verifyPlugin` 对 **IC-242.23726.103** 的结果为 **Compatible**。报告中的 6 处实验 API 使用均为 `Application.assertIsNonDispatchThread`，不是二进制不兼容错误；因网络未能取得 documented incompatible changes，已知问题过滤未启用，但兼容性检查已完成。`examples/junit-demo` 的 `build` 已通过，其中 `test` 为 `NO-SOURCE`，只证明示例工程可构建。
+
+交付工具的 11 项 Python 单元检查也已通过，使用 Python **3.13.5** 及锁定的 pypdf **6.21.2**、reportlab **4.5.1**。提交 ZIP 会为所有名为 `gradlew` 的 Wrapper 写入 `0755` 权限，避免 Windows NTFS 缺少执行位导致 Linux 无法直接运行 Wrapper。
+
+C 的运行、服务绑定、真实模型验收、CI 和提交打包流程见 [docs/AUTOMATION.md](docs/AUTOMATION.md)。B 的服务与设置协作约定见 [TEAM §4.6](docs/TEAM.md#46-b-侧集成约定2026-10-24)。
+
+### 5. Windows 中文路径排查
+
+若仓库路径含中文，Gradle 生成的 UTF-8 参数文件被本机 GBK 编码读取时，可能出现测试类 `ClassNotFoundException`。可把仓库放在纯英文目录，或创建一个只含 ASCII 字符的目录联接，用联接路径运行 Wrapper 和 `-p`。目录联接指向原仓库，修改与构建结果仍写入同一份文件。
+
+从原仓库根目录执行下列示例；先确认目标不存在，不覆盖已有目录：
+
+```powershell
+$taideSource = (Resolve-Path '.').Path
+$taideLink = 'C:\dev\taide-review'
+if (Test-Path -LiteralPath $taideLink) { throw '联接目标已存在，请换一个空闲的 ASCII 路径。' }
+if (!(Test-Path -LiteralPath 'C:\dev')) { New-Item -ItemType Directory -Path 'C:\dev' | Out-Null }
+New-Item -ItemType Junction -Path $taideLink -Target $taideSource | Out-Null
+Push-Location $taideLink
+try { .\gradlew.bat -p $taideLink test buildPlugin verifyPluginStructure }
+finally { Pop-Location }
+```
 
 ## 📁 目录结构
 
-```
+```text
 taide/
 ├── src/main/java/edu/cst3492/taide/
-│   ├── rag/            # 摄取 · 切块 · 嵌入 · 索引 · 检索
-│   ├── llm/            # 各家客户端、提示词模板
-│   ├── ui/             # 工具窗、对话面板、引用卡片
-│   ├── action/         # 右键动作（F0.4 + F1）
-│   ├── git/            # 暂存区 diff 提取
-│   ├── settings/       # 插件持久化配置
-│   └── service/        # TaideService —— UI 与内核之间唯一的接缝
-├── src/main/resources/
-│   ├── META-INF/plugin.xml
-│   └── prompts/        # 带版本的提示词模板
-├── docs/
-│   ├── TEAM.md         # 分工方案 —— 我们真正照着执行的那份文档
-│   └── ARCHITECTURE.md
-└── build.gradle.kts
+│   ├── rag/                 # 解析、切块、本地嵌入、索引、检索
+│   ├── llm/                 # HTTP / SSE 模型客户端
+│   ├── model/               # 固定版本模型下载、校验与共享目录配置
+│   ├── service/             # 共享契约、问答内核与项目服务
+│   ├── ui/                  # 原生聊天、设置与重建适配
+│   ├── context/             # 选区行号与 Java PSI 上下文
+│   ├── action/              # 右键问答与 automation/ 三个智能动作
+│   └── git/                 # 暂存区差异与提交保护
+├── src/main/resources/      # plugin.xml、动作注册片段、提示词与图标
+├── src/test/                # 单元、平台与可选真实模型测试
+├── integration-support/     # 正式类型缺失时的共享接口补位
+├── tools/                   # B 辅助沙箱、纯 Java 检查与 Swing 预览源码
+├── scripts/                 # 连通性与作业打包工具
+├── examples/junit-demo/     # 智能测试生成示例工程
+├── docs/                    # TEAM、自动化说明及报告贡献草稿
+├── .github/workflows/       # CI / 发布工作流
+└── build.gradle.kts         # 全组正式构建入口
 ```
-
----
 
 ## 👥 团队
 
-| | 角色 | 姓名 | 负责 |
+| 代号 | 角色 | 姓名 | 负责 |
 |:--|:--|:--|:--|
 | **A** | RAG 与模型内核 | 刘鸿铭 | 摄取、切块、检索、提示词、引用 |
-| **B** | UI/UX 与上下文 | `[待填]` | 工具窗、对话面板、右键菜单、`plugin.xml` |
+| **B** | UI/UX 与上下文 | `[待填]` | 工具窗、对话、设置、右键上下文、`plugin.xml`、README |
 | **C** | 自动化与发布 | `[待填]` | F1 三个动作、Git 集成、CI、打包 |
 
-完整职责、接口契约、里程碑与协作约定见 **[docs/TEAM.md](docs/TEAM.md)**。
+职责、接口契约与验收计划见 [docs/TEAM.md](docs/TEAM.md)；报告可参考 [B 英文贡献草稿 V1.1.0](docs/TAIDE-B-English-Report-V1.1.0.docx)与 [C 英文技术资料](docs/automation/TECHNICAL_NOTES.md)。贡献草稿仍需按作业规定的五节标题整合并补齐成员资料。
 
----
+## 🗺️ 计划里程碑
 
-## 🗺️ 里程碑
-
-| 日期 | 节点 |
+| 日期 | 计划节点 |
 |:--|:--|
 | 10-22 | 接口契约冻结（v1.0） |
-| 10-26 | **集成 #1** —— F0 端到端跑通，带引用 |
-| 10-30 | **集成 #2** —— F0 + F1 全部打通 |
-| 11-01 | 报告与幻灯片初稿完成，插件打包 |
-| 11-03 23:00 | **提交截止** |
+| 10-26 | 集成 #1：F0 端到端与引用人工核验 |
+| 10-30 | 集成 #2：F0 + F1 联调 |
+| 11-01 | 报告、幻灯片与插件打包 |
+| 11-03 23:00 | 提交截止 |
 | 11-04 13:30 | 课堂演示 |
 
 ---
 
 <div align="center">
 
-**CST3492 — Java 企业级应用开发** · 2026/27 学年第一学期 · B 组
-
-用 ☕ 和数不清的 `gradlew runIde` 写成。
+**CST3492 — Java 企业级应用开发** · 2026/27 学年第一学期 · Group B
 
 </div>
