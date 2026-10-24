@@ -19,6 +19,8 @@ dependencies {
     implementation("org.apache.pdfbox:pdfbox:3.0.5")
     implementation("org.apache.poi:poi-ooxml:5.4.1")
     implementation("org.apache.logging.log4j:log4j-api:2.24.3")
+    // A（RAG 嵌入）：ONNX Runtime 本地推理。
+    implementation("com.microsoft.onnxruntime:onnxruntime:1.20.0")
     intellijPlatform {
         val localPlatform = providers.gradleProperty("localPlatformPath")
         if (localPlatform.isPresent) local(localPlatform.get()) else intellijIdeaCommunity("2024.2.4")

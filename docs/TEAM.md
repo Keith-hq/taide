@@ -227,6 +227,7 @@ public interface SmartAction {
 - 课件：本机 `C:\Users\LiuHM\taide-materials\` 现有 **9 份**讲义（Lec-0 ~ Lec-5，10-24 从 Canvas 下载）；TEAM 计划按 10 份计，尚缺 1 份（疑为 Lec-6 或后续讲义），正式验收以可得课件为准。
 - A-7（FakeTaideService）：B 的 `DemoTaideService` 已覆盖「假数据供 UI 开发」的全部用途，A 不再单独交付 FakeTaideService；有异议请在群内提出。
 - **A-1 已收口（2026-10-24）**：真实课件跑通 `ingestMaterials`——9 份讲义共 199 页 → 199 chunks（每页文本稀疏，绝大多数页不足 512 token 即一页一块；TEAM 原估 >800 是按更密语料估的，实际以语料为准）；页码边界已用 pymupdf 逐页交叉验证 6/6 一致；U+FFFD 乱码在摄取层已清理。人工抽 10 块核对页码待全组复核，A-2 嵌入+索引 10-25。
+- **A-2 已收口（2026-10-24，提前一天）**：`rag/embed/`（`BertTokenizer` WordPiece 分词、`OnnxEmbeddingModel` ONNX 本地推理 + 均值池化 + L2 归一化，模型输出为原始隐层故需池化）与 `rag/index/`（`InMemoryVectorIndex` 余弦检索 + §4.5 JSON 落盘原子写入、`IndexBuilder` 内容哈希缓存复用旧向量、`BuildIndexMain` 验收 CLI）。实测：199 块全量构建 **4.0s**（<60s 验收线）、缓存重建 **1.1s**（<3s 验收线，embedded=0/reused=199）；`index.json` 已被独立 Python 脚本读取验证（version/model/dim/384 维全对）；查询「what is constructor injection」top-1 命中 Lec-2 第 6 页 Constructors（0.484），语义正确。真模型测试（BERT 参考 id、向量归一化）需 `TAIDE_MODEL_DIR` + `-PliveModelTests=true`。新依赖 onnxruntime 1.20.0（C 审阅）。模型文件约 90MB 已本地化于 `D:\taide-models\`，插件内按需下载方案待 C 打包时定。
 
 ---
 
