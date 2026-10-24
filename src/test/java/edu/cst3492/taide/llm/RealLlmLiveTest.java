@@ -1,22 +1,11 @@
 package edu.cst3492.taide.llm;
 
-import edu.cst3492.taide.rag.embed.OnnxEmbeddingModel;
-import edu.cst3492.taide.rag.index.IndexBuilder;
-import edu.cst3492.taide.rag.index.InMemoryVectorIndex;
-import edu.cst3492.taide.rag.retrieve.EmbeddingRetriever;
-import edu.cst3492.taide.rag.retrieve.RetrievalEvaluator;
 import edu.cst3492.taide.service.CodeContext;
-import edu.cst3492.taide.service.PromptLibrary;
 import edu.cst3492.taide.service.TaAnswer;
 import edu.cst3492.taide.service.TaideServiceCore;
 import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
-
-import java.io.IOException;
-import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
-import java.nio.file.Path;
 
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -29,25 +18,9 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 @Tag("live-model")
 class RealLlmLiveTest {
 
-    static String apiKey() {
-        String env = System.getenv("TAIDE_LLM_API_KEY");
-        if (env != null && !env.isBlank()) return env;
-        String property = System.getProperty("taide.llm.api.key");
-        if (property != null && !property.isBlank()) return property;
-        Path file = Path.of(System.getProperty("user.home"), ".taide-api-key");
-        try {
-            if (Files.exists(file)) {
-                String value = Files.readString(file, StandardCharsets.UTF_8).strip();
-                if (!value.isBlank()) return value;
-            }
-        } catch (IOException ignored) {
-        }
-        return null;
-    }
-
     @Test
     void deepSeekRoundTripCompleteAndStreaming() {
-        String key = apiKey();
+        String key = LiveTestSupport.apiKey();
         Assumptions.assumeTrue(key != null, "no DeepSeek key: set TAIDE_LLM_API_KEY or ~/.taide-api-key");
         OpenAiCompatibleLlmClient client =
                 new OpenAiCompatibleLlmClient("https://api.deepseek.com", key, "deepseek-chat");
@@ -62,22 +35,15 @@ class RealLlmLiveTest {
 
     @Test
     void realEndToEndGroundedAnswer() throws Exception {
-        String key = apiKey();
+        String key = LiveTestSupport.apiKey();
         Assumptions.assumeTrue(key != null, "no DeepSeek key: set TAIDE_LLM_API_KEY or ~/.taide-api-key");
-        Path materials;
+        TaideServiceCore core;
         try {
-            materials = RetrievalEvaluator.resolveMaterialsDir();
+            core = LiveTestSupport.buildCore(key);
         } catch (IllegalStateException e) {
             Assumptions.abort("course materials not configured");
             return;
         }
-        Path indexPath = Files.createTempDirectory("taide-real").resolve("index.json");
-        OnnxEmbeddingModel model = OnnxEmbeddingModel.openDefault();
-        new IndexBuilder(model).build(materials, indexPath, null);
-        EmbeddingRetriever retriever = new EmbeddingRetriever(InMemoryVectorIndex.load(indexPath), model);
-        OpenAiCompatibleLlmClient client =
-                new OpenAiCompatibleLlmClient("https://api.deepseek.com", key, "deepseek-chat");
-        TaideServiceCore core = new TaideServiceCore(retriever, client, new PromptLibrary(), "deepseek-chat");
 
         TaAnswer grounded = core.ask("What is a chained exception?", CodeContext.empty());
         assertTrue(grounded.grounded());

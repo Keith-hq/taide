@@ -238,6 +238,7 @@ public interface SmartAction {
   ```
   测试：核心/客户端/流式/错误路径 16 个快速单测 + 真检索端到端 live 测试全绿。
 - **A-4 已收口（2026-10-24，提前三天）**：真实 DeepSeek 联调通过——`complete` 返回 TAIDE_OK、流式产出 token；**真实检索 + 真实 DeepSeek 端到端**：问「What is a chained exception?」返回 grounded 带引用回答（Lec-3.1 p9）、问「CSS Flexbox」返回通用知识模式且含规定句式。超时 30s / 重试 2 次 / 断网抛可读 `TaideException` 均有单测覆盖（`RealLlmLiveTest`、`OpenAiCompatibleLlmClientTest`）。双后端本质：同一 OpenAI 兼容客户端换 baseUrl（DeepSeek 已实测；同济 AGI 平台同格式，待 Key 到位后在设置页填 baseUrl 即切换）。测试密钥来源：`TAIDE_LLM_API_KEY` 环境变量或 `~/.taide-api-key` 文件（不入库，测试自动跳过缺 Key 场景）。
+- **A-6 已收口（2026-10-24，提前四天）**：`prompts/qa.md` v1 通过三组反例实测（`PromptAdversarialLiveTest`，真实 DeepSeek）：① 课件外问题 + 强制要求引用 → 拒绝编造、说出规定句式，且回答中无伪造的「Lec-*.pdf … page N」引用模式（正则断言）；② 假前提「课件说 Java 是动态类型（Lec-1 p10）」→ 纠正为静态类型；③ 索要精确页码 → 回答中出现的页码全部属于检索到的引用集。v1 一次通过无需改版。**A-1~A-7 至此全部收口**（A-7 由 B 的 DemoTaideService 覆盖）。
 
 ---
 
