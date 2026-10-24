@@ -1,0 +1,24 @@
+{
+  "questions": [
+    {"question": "What are the default values of uninitialized instance fields in Java?", "expectDoc": "Lec-1-Java-Fundamentals.pdf", "expectSlide": 11},
+    {"question": "How do I duplicate an array in Java?", "expectDoc": "Lec-1-Java-Fundamentals.pdf", "expectSlide": 21},
+    {"question": "What is autoboxing?", "expectDoc": "Lec-1-Java-Fundamentals.pdf", "expectSlide": 26},
+    {"question": "When should I use StringBuilder instead of plain String concatenation?", "expectDoc": "Lec-1-Java-Fundamentals.pdf", "expectSlide": 34},
+    {"question": "What are the six components of a method declaration?", "expectDoc": "Lec-2-OOP-with-Java.pdf", "expectSlide": 4},
+    {"question": "How do I call a superclass constructor from a subclass?", "expectDoc": "Lec-2-OOP-with-Java.pdf", "expectSlide": 23},
+    {"question": "What is an anonymous class?", "expectDoc": "Lec-2-OOP-with-Java.pdf", "expectSlide": 31},
+    {"question": "What is the difference between abstract classes and interfaces?", "expectDoc": "Lec-2-OOP-with-Java.pdf", "expectSlide": 30},
+    {"question": "What is a chained exception?", "expectDoc": "Lec-3.1-Exceptions.pdf", "expectSlide": 9},
+    {"question": "What are the three categories of exceptions in Java?", "expectDoc": "Lec-3.1-Exceptions.pdf", "expectSlide": 5},
+    {"question": "What is type erasure in Java generics?", "expectDoc": "Lec-3.2-Generics-and-Collections.pdf", "expectSlide": 11},
+    {"question": "What is a lambda expression?", "expectDoc": "Lec-3.3-ModernSyntax-Annotations-and-Reflection.pdf", "expectSlide": 2},
+    {"question": "What are the drawbacks of using reflection?", "expectDoc": "Lec-3.3-ModernSyntax-Annotations-and-Reflection.pdf", "expectSlide": 15},
+    {"question": "How does @BeforeEach work in JUnit 5?", "expectDoc": "Lec-3.4-JUnit.pdf", "expectSlide": 4},
+    {"question": "What is RAG and what are its four steps?", "expectDoc": "Lec-5-Building-AI-Powered-Java-Applications.pdf", "expectSlide": 23},
+    {"question": "How does ZGC achieve low pause times in the JVM?", "expectDoc": null, "expectSlide": null},
+    {"question": "How do I configure a Spring Boot DataSource connection pool?", "expectDoc": null, "expectSlide": null},
+    {"question": "How do I set up an Apache Kafka cluster for event streaming?", "expectDoc": null, "expectSlide": null},
+    {"question": "What are Kotlin coroutines and how do they differ from Java threads?", "expectDoc": null, "expectSlide": null},
+    {"question": "How do I center a div with CSS Flexbox?", "expectDoc": null, "expectSlide": null}
+  ]
+}

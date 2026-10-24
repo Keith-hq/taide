@@ -114,6 +114,14 @@ tasks {
         mainClass.set("edu.cst3492.taide.rag.index.BuildIndexMain")
         systemProperty("taide.model.dir", providers.environmentVariable("TAIDE_MODEL_DIR").getOrElse(""))
     }
+    // A-3 评测 CLI：建索引后跑 20 题评测集，打印逐题 top-1 与命中率。
+    register<JavaExec>("evalRetrieval") {
+        group = "verification"
+        description = "Run the 20-question retrieval eval set and print hit rates"
+        classpath = sourceSets.main.get().runtimeClasspath
+        mainClass.set("edu.cst3492.taide.rag.retrieve.RetrievalEvalMain")
+        systemProperty("taide.model.dir", providers.environmentVariable("TAIDE_MODEL_DIR").getOrElse(""))
+    }
     register("validateReleaseVersion") {
         doLast {
             val tag = providers.environmentVariable("GITHUB_REF_NAME").getOrElse("")
@@ -141,6 +149,7 @@ tasks {
         javaLauncher.set(testLauncher)
         systemProperty("taide.test.javac", testCompiler.get().executablePath.asFile.absolutePath)
         systemProperty("taide.model.dir", providers.environmentVariable("TAIDE_MODEL_DIR").getOrElse(""))
+        systemProperty("taide.materials.dir", providers.environmentVariable("TAIDE_MATERIALS_DIR").getOrElse(""))
         systemProperty("java.awt.headless", "true")
         maxHeapSize = "1536m"
         timeout.set(Duration.ofMinutes(if (liveModelTests.get()) 15 else 5))
