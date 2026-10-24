@@ -10,6 +10,7 @@ import com.intellij.openapi.project.Project;
 import edu.cst3492.taide.llm.LlmClient;
 import edu.cst3492.taide.rag.RetrievedChunk;
 import edu.cst3492.taide.rag.Retriever;
+import edu.cst3492.taide.ui.integration.CourseSourceNavigator;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.Objects;
@@ -59,22 +60,32 @@ public final class AutomationServices {
     }
 
     public boolean canOpenSources() {
-        return bindings.sourceOpener() != null;
+        return !project.isDisposed();
+    }
+
+    /** Captures the navigation binding and course directory for one review request. */
+    public Consumer<RetrievedChunk> captureSourceOpener() {
+        var opener = bindings.sourceOpener();
+        if (opener == null) {
+            opener = CourseSourceNavigator.getInstance(project).snapshot();
+        }
+        var captured = opener;
+        return source -> {
+            if (project.isDisposed()) {
+                return;
+            }
+            try {
+                captured.accept(source);
+            } catch (ProcessCanceledException error) {
+                throw error;
+            } catch (Exception error) {
+                error("The course document could not be opened. Check its local location.");
+            }
+        };
     }
 
     public void openSource(RetrievedChunk source) {
-        var opener = bindings.sourceOpener();
-        if (opener == null) {
-            error("Course source navigation is unavailable. Check the TAIDE integration.");
-            return;
-        }
-        try {
-            opener.accept(source);
-        } catch (ProcessCanceledException error) {
-            throw error;
-        } catch (Exception error) {
-            error("The course document could not be opened. Check its local location.");
-        }
+        captureSourceOpener().accept(source);
     }
 
     public boolean isBusy() {

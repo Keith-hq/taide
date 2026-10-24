@@ -18,8 +18,9 @@ public final class CourseReviewAction extends JavaSelectionAction {
     @Override
     public void perform(Project project, Editor editor, CodeContext context) {
         var services = AutomationServices.getInstance(project);
+        var openSource = services.captureSourceOpener();
         services.background("TAIDE: Review Code Against Course",
                 () -> new CourseReviewGenerator(services.model(), services.retriever()).generate(context),
-                review -> new AutomationDialogs.Review(project, review).show());
+                review -> new AutomationDialogs.Review(project, review, openSource).show());
     }
 }

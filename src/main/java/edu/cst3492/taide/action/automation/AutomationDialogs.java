@@ -5,6 +5,7 @@ import com.intellij.openapi.project.Project;
 import com.intellij.openapi.ui.DialogWrapper;
 import com.intellij.openapi.ui.ValidationInfo;
 import edu.cst3492.taide.git.StagedChanges;
+import edu.cst3492.taide.rag.RetrievedChunk;
 import org.jetbrains.annotations.Nullable;
 
 import javax.swing.AbstractAction;
@@ -21,6 +22,8 @@ import java.awt.datatransfer.StringSelection;
 import java.awt.event.ActionEvent;
 import java.nio.file.Path;
 import java.util.List;
+import java.util.Objects;
+import java.util.function.Consumer;
 
 final class AutomationDialogs {
     private AutomationDialogs() {}
@@ -217,12 +220,16 @@ final class AutomationDialogs {
 
     static final class Review extends DialogWrapper {
         private final CourseReview review;
-        private final AutomationServices services;
+        private final Consumer<RetrievedChunk> openSource;
 
         Review(Project project, CourseReview review) {
+            this(project, review, AutomationServices.getInstance(project).captureSourceOpener());
+        }
+
+        Review(Project project, CourseReview review, Consumer<RetrievedChunk> openSource) {
             super(project);
             this.review = review;
-            this.services = AutomationServices.getInstance(project);
+            this.openSource = Objects.requireNonNull(openSource);
             setTitle("Course-Aware Code Review");
             setOKButtonText("Close");
             init();
@@ -230,8 +237,7 @@ final class AutomationDialogs {
 
         @Override
         protected JComponent createCenterPanel() {
-            return AutomationPanels.review(review,
-                    services.canOpenSources() ? services::openSource : null, AutomationDialogs::copy);
+            return AutomationPanels.review(review, openSource, AutomationDialogs::copy);
         }
 
         @Override

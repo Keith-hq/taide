@@ -7,7 +7,7 @@
 <p><b>面向 CST3492 的 IntelliJ IDEA 插件</b><br/>检索课程材料、流式问答，并在编辑器中执行智能动作</p>
 
 <p>
-  <img src="https://img.shields.io/badge/状态-集成验收中-f59e0b?style=for-the-badge" alt="status"/>
+  <img src="https://img.shields.io/badge/状态-F0已接通_F1待接入-f59e0b?style=for-the-badge" alt="status"/>
   <img src="https://img.shields.io/badge/课程-CST3492-2563EB?style=for-the-badge" alt="course"/>
   <img src="https://img.shields.io/badge/组别-Group_B-8B5CF6?style=for-the-badge" alt="group"/>
   <img src="https://img.shields.io/badge/版本-0.1.0_SNAPSHOT-9CA3AF?style=for-the-badge" alt="version"/>
@@ -25,9 +25,9 @@
 </div>
 
 > [!IMPORTANT]
-> **当前状态：A 的问答与索引服务、B 的原生界面、C 的自动化动作代码已合入，正在进行集成验收。**
+> **当前状态：F0 聊天、选区问答、模型准备与知识库重建已在代码中接通；F1 自动化动作尚未完成运行时接入，不能视为所有功能已打通。**
 > 默认开启演示模式，只生成明确标注的固定示例。首次使用引导可下载并配置本地检索模型；准备课件与模型 API Key、重建知识库后，再显式切换真实问答。
-> F1 三个动作已有菜单与实现，其模型、检索和引用导航仍需按 [自动化接入约定](docs/AUTOMATION.md#服务接入)绑定；不能将其视为已与聊天服务自动接通。最后更新：2026-10-24。
+> F1 三个动作已有菜单与实现，课件审查的来源导航已默认接入；模型和检索仍需 A/C 按 [自动化接入约定](docs/AUTOMATION.md#服务接入)完成运行时接入，不能将其视为已与聊天服务自动接通。最后更新：2026-10-24。
 
 ---
 
@@ -48,11 +48,32 @@ TAIDE 为 **CST3492 — Java 企业级应用开发**（2026/27 学年第一学�
 | **首次使用** | 模型准备与引导 | 展示模型、API/课件与索引准备状态；用户点击后下载并校验模型，也可选择已有目录；不会自动退出演示模式 |
 | **F1.1** | JUnit 测试生成 | 动作、语法校验、可编辑预览、创建文件与撤销已实现；真实模型服务待项目级接入 |
 | **F1.2** | 提交信息生成 | 暂存区差异、Conventional Commit 预览、复制与确认后本地提交已实现；真实模型服务待项目级接入 |
-| **F1.3** | 课件感知代码审查 | 结构化问题与引用核验已实现；真实模型、检索器和来源导航回调待接入 |
+| **F1.3** | 课件感知代码审查 | 结构化问题与引用核验已实现，默认来源导航已接入；真实模型与检索器仍待 A/C 接入 |
 
 **引用定位边界：** 当前通过 IDE 打开本地源文件，并显示页码提示。PDF/PPTX 能否直接预览取决于本机 IDE 的文件处理能力；尚未实现跳转到指定页的深链。演示引用只显示说明，不会打开同名真实课件。
 
 每条历史消息使用发送时保存的课件目录打开引用。之后切换设置中的目录或演示模式，不会把已有引用指向新目录中的同名文件。
+
+课件审查使用项目级 `CourseSourceNavigator`，无需先打开聊天工具窗或调用 `bind`。`CourseReviewAction` 在启动后台审查前通过 `AutomationServices.captureSourceOpener()` 保存导航回调：默认固定当时的课件目录，已有自定义绑定时固定该回调。来源按钮传入原始 `RetrievedChunk`，打开目录内的 PDF/PPTX 后提示手动定位到对应的 1-based 页码；后续设置或绑定变更不会替换旧审查持有的回调。自定义回调自身负责保存所需的目录上下文。
+
+### 集成核查结果
+
+核查以 `main` 的 `c201e85`（[PR #8](https://github.com/Keith-hq/taide/pull/8)，2026-10-24）为基线，并补充本次来源导航接入。下表的“代码已接通”表示正式插件入口和调用路径已连接；实际 IDE 中使用有效 API Key、真实课件完成操作，仍须单独验收。
+
+| 链路 | 当前结论 | 依据与剩余工作 |
+|:--|:--|:--|
+| 首次引导 → 模型下载/已有目录 → 校验 → 模型加载 | 代码已接通 | `ModelSetupService` 管理共享目录，问答与重建使用同一路径；真实模型安装、校验、缓存复用和推理已验证，IDE 内联网下载待人工验收 |
+| 课件目录 → Rebuild → 本地索引 → 聊天检索 | 代码已接通 | `ProjectKnowledgeBaseController` 委托同一个 `TaideServiceImpl`；重建成功使聊天资源缓存失效 |
+| 普通提问/编辑器选区 → 检索 → API → 流式回答 | 代码已接通 | 正式工具窗解析项目问答服务，设置与 PasswordSafe 提供连接参数；完整 IDE 操作链仍需真实环境验收 |
+| 聊天引用 → 源文件 → 指定页 | 部分完成 | 已检查引用路径并打开文件；指定页深链未实现，当前提示手动定位 |
+| F1.1 JUnit 生成 → 预览 → 写入/撤销 | 运行时模型未接入 | 菜单和生成/保存组件已实现；`AutomationServices` 尚无生产环境的模型绑定 |
+| F1.2 暂存区 → 提交信息 → 预览/本地提交 | 运行时模型未接入 | Git 与预览组件已实现；同样缺少运行时模型客户端 |
+| F1.3 代码审查 → 课件检索 → 引用导航 | 模型/检索未接入，导航已接通 | 默认来源打开无需额外绑定；审查前固定课件目录或自定义回调，模型和检索器仍需 A/C 接入 |
+| PR → CI 测试/打包 → 兼容检查 | 已验证 | PR #8 的 GitHub Actions `build` 与 `compatibility` 均通过；该结果不包含需要密钥和课件的 IDE 人工验收 |
+
+**F1 接入缺口：** `AutomationServices` 的模型与检索初始绑定为空。生产源码中尚无 `AutomationServices.bind(...)` 调用，插件描述也未将 `LlmClient`、`Retriever` 注册为项目服务。聊天服务在内部创建的客户端与检索器没有自动暴露给 F1，因此仅配置聊天设置或关闭演示模式不能启用这三个动作。来源导航已有独立的默认服务，`bind` 可覆盖为自定义回调。具体接口见 [自动化服务接入](docs/AUTOMATION.md#服务接入)。
+
+完成全链路集成还需要接入上述 F1 模型与检索服务，并在 IDE 中验证真实问答、JUnit 保存与撤销、暂存区提交预览/确认、课件审查及来源打开。现有组件测试和真实模型测试不能替代这些运行时集成验收。
 
 ## 🛠️ 技术栈
 
@@ -83,7 +104,10 @@ flowchart LR
     RET --> SVC --> LLM["OpenAI 兼容 HTTP / SSE"] --> API["模型 API"]
     SVC --> UI
     ACT["C 的三个智能动作"] --> AUTO["AutomationServices"]
-    BIND["待接入的 LlmClient / Retriever / 导航回调"] -. "项目级 bind" .-> AUTO
+    BIND["待接入的 LlmClient / Retriever"] -. "项目级 bind 或服务注册" .-> AUTO
+    AUTO --> NAV["CourseSourceNavigator / 审查目录快照"]
+    UI --> NAV
+    NAV --> FILE["打开 PDF / PPTX · 提示手动定位页码"]
 ```
 
 聊天与重建通过同一个项目级服务实例共享资源。设置或凭据更新会使缓存失效；重建成功后切换索引，模型会话在资源不再使用或项目关闭时释放。重建发布前检查取消状态，取消不会把未完成索引替换为当前索引；完成发布后的取消会如实显示已完成状态。
@@ -170,6 +194,8 @@ macOS/Linux 使用 `./gradlew`。安装包位于 `build/distributions/taide-0.1.
 ```
 
 本次模型准备与引导验收（2026-10-24）：**97 项纯 JDK 行为检查通过**，生成 14 张原生聊天截图及 2 张设置页截图；目标 IDE 2024.2.4 的 Gradle 套件共 **170 项测试：168 通过、2 跳过**，跳过项均为 Windows 本机缺少符号链接创建权限的夹具。`buildPlugin`、`verifyPluginStructure` 与 `verifyPlugin` 均通过，兼容检查保留 6 处线程断言的实验性 API 提示。另用真实约 90 MB 模型验证了完整安装、SHA-256 校验、缓存复用及显式目录 ONNX 推理。安装器网络回归使用本地 HTTP/mock；本次没有调用真实问答 API，也未把该套件视为 IDE 内真实联网下载和完整课程问答的人工验收。PDF/PPTX 指定页深链仍未实现。
+
+自动化引用导航补充验收（2026-10-24，Windows）：新增 12 项平台测试后，完整套件为 **182 项：180 通过、2 跳过**；跳过原因仍为本机符号链接权限。`buildPlugin`、`verifyPluginStructure` 和 `verifyPlugin` 通过，兼容结论为 **Compatible**，保留原有 6 处实验 API 提示。导航测试覆盖本地文件与 VFS、审查目录/绑定快照、EDT 及模态回调；真实课件在 IDE 中的预览仍需人工验收。
 
 `verifyPlugin` 对 **IC-242.23726.103** 的结果为 **Compatible**。报告中的 6 处实验 API 使用均为 `Application.assertIsNonDispatchThread`，不是二进制不兼容错误；因网络未能取得 documented incompatible changes，已知问题过滤未启用，但兼容性检查已完成。`examples/junit-demo` 的 `build` 已通过，其中 `test` 为 `NO-SOURCE`，只证明示例工程可构建。
 

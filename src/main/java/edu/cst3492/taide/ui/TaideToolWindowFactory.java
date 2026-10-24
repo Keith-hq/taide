@@ -1,13 +1,11 @@
 package edu.cst3492.taide.ui;
 
 import com.intellij.openapi.application.ApplicationManager;
-import com.intellij.openapi.fileEditor.FileEditorManager;
 import com.intellij.openapi.ide.CopyPasteManager;
 import com.intellij.openapi.options.ShowSettingsUtil;
 import com.intellij.openapi.project.DumbAware;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.ui.Messages;
-import com.intellij.openapi.vfs.LocalFileSystem;
 import com.intellij.openapi.wm.*;
 import com.intellij.ui.JBColor;
 import com.intellij.ui.components.JBScrollPane;
@@ -16,11 +14,11 @@ import com.intellij.util.ui.UIUtil;
 import edu.cst3492.taide.model.ModelSetupService;
 import edu.cst3492.taide.service.*;
 import edu.cst3492.taide.ui.chat.*;
+import edu.cst3492.taide.ui.integration.CourseSourceNavigator;
 import edu.cst3492.taide.ui.settings.*;
 import org.jetbrains.annotations.NotNull;
 import java.awt.*;
 import java.awt.datatransfer.StringSelection;
-import java.nio.file.*;
 import java.util.Objects;
 import java.util.concurrent.CancellationException;
 import java.util.concurrent.Future;
@@ -206,31 +204,7 @@ public final class TaideToolWindowFactory implements ToolWindowFactory, DumbAwar
             if (demonstration) {
                 Messages.showInfoMessage(project, "这是界面演示引用，没有附带实际课件。接入真实问答服务并配置课件目录后，即可打开源文件。", "演示引用"); return;
             }
-            if (root.isBlank()) {
-                Messages.showInfoMessage(project, "请先在 Settings → Tools → TAIDE 中配置课件目录。", "未配置课件目录"); return;
-            }
-            if (citation.slideNumber() < 1) {
-                Messages.showInfoMessage(project, "引用缺少有效页码，请核对原始回答。", "无法打开引用"); return;
-            }
-            ApplicationManager.getApplication().executeOnPooledThread(() -> {
-                try {
-                    Path path = CitationFiles.resolve(Path.of(root), citation.documentName());
-                    if (project.isDisposed()) return;
-                    var file = LocalFileSystem.getInstance().refreshAndFindFileByNioFile(path);
-                    ApplicationManager.getApplication().invokeLater(() -> {
-                        if (project.isDisposed()) return;
-                        if (file == null || !file.isValid()) { Messages.showInfoMessage(project, "文件已移动或不存在，请重新选择课件目录。", "无法打开引用"); return; }
-                        FileEditorManager.getInstance(project).openFile(file, true);
-                        // SDK has no stable PDF/PPTX page-navigation API. Never pretend the requested page was selected.
-                        Messages.showInfoMessage(project, "已打开 " + file.getName() + "。请手动定位到第 " + citation.slideNumber() + " 页 / 张。", "引用位置");
-                    });
-                } catch (Exception failure) {
-                    ApplicationManager.getApplication().invokeLater(() -> {
-                        if (!project.isDisposed()) Messages.showInfoMessage(project,
-                                failure.getMessage() == null ? "无法打开课件，请检查目录权限。" : failure.getMessage(), "无法打开引用");
-                    });
-                }
-            });
+            CourseSourceNavigator.getInstance(project).open(citation, root);
         }
     }
 }
