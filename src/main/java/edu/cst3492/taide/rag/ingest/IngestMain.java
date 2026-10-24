@@ -58,6 +58,6 @@ public final class IngestMain {
 
     private static String preview(String text) {
         String singleLine = text.replace('\n', ' ');
-        return singleLine.length() <= 80 ? singleLine : singleLine.substring(0, 80) + "…";
+        return singleLine.length() <= 80 ? singleLine : singleLine.substring(0, 80) + "...";
     }
 }
