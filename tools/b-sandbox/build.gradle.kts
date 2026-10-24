@@ -15,6 +15,10 @@ dependencies {
     implementation("com.google.code.gson:gson:2.12.1")
     implementation("com.github.javaparser:javaparser-core:3.26.3")
     implementation("org.eclipse.jgit:org.eclipse.jgit:7.1.0.202411261347-r")
+    // A（RAG 摄取/切块）：与根构建保持一致，否则 src/main 编译失败。合并前请 B 审阅。
+    implementation("org.apache.pdfbox:pdfbox:3.0.5")
+    implementation("org.apache.poi:poi-ooxml:5.4.1")
+    implementation("org.apache.logging.log4j:log4j-api:2.24.3")
     intellijPlatform {
         val localPlatform = providers.gradleProperty("localPlatformPath")
         if (localPlatform.isPresent) local(localPlatform.get()) else intellijIdeaCommunity("2024.2.4")

@@ -48,7 +48,7 @@
 
 | 代号 | 姓名 | 学号 | 角色 | 一句话职责 | 工作量 |
 |:--:|:--|:--|:--|:--|:--:|
-| **A** | `[待填]` | `[待填]` | **RAG & LLM Core Lead** | 让插件「查得到、答得准、引得出」 | 35% |
+| **A** | 刘鸿铭 | 2453608 | **RAG & LLM Core Lead** | 让插件「查得到、答得准、引得出」 | 35% |
 | **B** | `[待填]` | `[待填]` | **UI/UX & Context Lead** | 让插件「看得见、点得动、不卡死」 | 30% |
 | **C** | `[待填]` | `[待填]` | **Automation & Release Lead** | 让插件「自动干三件事」并保证能交付 | 35% |
 
@@ -218,6 +218,15 @@ public interface SmartAction {
 - 所有 prompt 存 `resources/prompts/*.md`，不要在代码里拼字符串——报告里要贴，评审要看。
 
 **风险**：embedding 模型体积（ONNX MiniLM ≈ 90MB）会让插件包变大。预案：模型按需下载 + 校验和，首次启动时拉取。
+
+#### A 实现进度记录（2026-10-24）
+
+- A-1 首版代码已提交工作区（分支 `feat/a-rag-index`）：`rag/ingest/`（`PdfIngestor` 逐页解析、`PptxIngestor` 逐片解析含备注、`CourseMaterial`）、`rag/chunk/SlideAwareChunker`（512/64、绝不跨页、id=`文档#页码#序号`）、`rag/Chunk`、`IngestMain` 验收 CLI（`./gradlew ingestMaterials --args="<课件目录>"`），配 3 个 JUnit 测试类（页码 1-based、跨页禁止、硬切分、重叠、空片跳过）。
+- 技术栈取舍：PDF 用 **PDFBox**（Tika 的 PDF 底层引擎）直接逐页提取，保证页码与阅读器一致，避免 XHTML 再解析一层；PPTX 按预案用 **POI XSLF**（不用 Tika 纯文本）。README 技术栈徽章（Tika）请 B 择机更新为「PDFBox/POI（Tika 生态）」。
+- 依赖新增 `pdfbox 3.0.5`、`poi-ooxml 5.4.1`、`log4j-api`（POI 编译期需要），已同步加进根构建与 `tools/b-sandbox` 构建，合并时请 C、B 分别审阅（打包排除/体积由 C 决定）。
+- 课件：本机 `C:\Users\LiuHM\taide-materials\` 现有 **9 份**讲义（Lec-0 ~ Lec-5，10-24 从 Canvas 下载）；TEAM 计划按 10 份计，尚缺 1 份（疑为 Lec-6 或后续讲义），正式验收以可得课件为准。
+- A-7（FakeTaideService）：B 的 `DemoTaideService` 已覆盖「假数据供 UI 开发」的全部用途，A 不再单独交付 FakeTaideService；有异议请在群内提出。
+- **A-1 已收口（2026-10-24）**：真实课件跑通 `ingestMaterials`——9 份讲义共 199 页 → 199 chunks（每页文本稀疏，绝大多数页不足 512 token 即一页一块；TEAM 原估 >800 是按更密语料估的，实际以语料为准）；页码边界已用 pymupdf 逐页交叉验证 6/6 一致；U+FFFD 乱码在摄取层已清理。人工抽 10 块核对页码待全组复核，A-2 嵌入+索引 10-25。
 
 ---
 
