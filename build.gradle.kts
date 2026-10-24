@@ -26,6 +26,8 @@ dependencies {
     implementation("org.apache.pdfbox:pdfbox:3.0.5")
     implementation("org.apache.poi:poi-ooxml:5.4.1")
     implementation("org.apache.logging.log4j:log4j-api:2.24.3")
+    // A（RAG 嵌入）：ONNX Runtime 本地跑 MiniLM；模型文件不进插件包（运行时按需下载）。
+    implementation("com.microsoft.onnxruntime:onnxruntime:1.20.0")
 
     testImplementation(platform("org.junit:junit-bom:5.11.4"))
     testImplementation("org.junit.jupiter:junit-jupiter")
@@ -104,6 +106,14 @@ tasks {
         classpath = sourceSets.main.get().runtimeClasspath
         mainClass.set("edu.cst3492.taide.rag.ingest.IngestMain")
     }
+    // A-2 验收 CLI：构建索引并可选查询（模型目录用 TAIDE_MODEL_DIR 环境变量指定）。
+    register<JavaExec>("buildIndex") {
+        group = "verification"
+        description = "Build the course index from a materials directory and optionally query it"
+        classpath = sourceSets.main.get().runtimeClasspath
+        mainClass.set("edu.cst3492.taide.rag.index.BuildIndexMain")
+        systemProperty("taide.model.dir", providers.environmentVariable("TAIDE_MODEL_DIR").getOrElse(""))
+    }
     register("validateReleaseVersion") {
         doLast {
             val tag = providers.environmentVariable("GITHUB_REF_NAME").getOrElse("")
@@ -130,6 +140,7 @@ tasks {
         }
         javaLauncher.set(testLauncher)
         systemProperty("taide.test.javac", testCompiler.get().executablePath.asFile.absolutePath)
+        systemProperty("taide.model.dir", providers.environmentVariable("TAIDE_MODEL_DIR").getOrElse(""))
         systemProperty("java.awt.headless", "true")
         maxHeapSize = "1536m"
         timeout.set(Duration.ofMinutes(if (liveModelTests.get()) 15 else 5))

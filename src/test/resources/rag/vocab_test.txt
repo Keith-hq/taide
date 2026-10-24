@@ -1,0 +1,14 @@
+[PAD]
+[UNK]
+[CLS]
+[SEP]
+[MASK]
+a
+b
+##b
+hello
+world
+play
+##ing
+中
+文
