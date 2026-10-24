@@ -237,6 +237,7 @@ public interface SmartAction {
                   serviceImplementation="edu.cst3492.taide.service.TaideServiceImpl"/>
   ```
   测试：核心/客户端/流式/错误路径 16 个快速单测 + 真检索端到端 live 测试全绿。
+- **A-4 已收口（2026-10-24，提前三天）**：真实 DeepSeek 联调通过——`complete` 返回 TAIDE_OK、流式产出 token；**真实检索 + 真实 DeepSeek 端到端**：问「What is a chained exception?」返回 grounded 带引用回答（Lec-3.1 p9）、问「CSS Flexbox」返回通用知识模式且含规定句式。超时 30s / 重试 2 次 / 断网抛可读 `TaideException` 均有单测覆盖（`RealLlmLiveTest`、`OpenAiCompatibleLlmClientTest`）。双后端本质：同一 OpenAI 兼容客户端换 baseUrl（DeepSeek 已实测；同济 AGI 平台同格式，待 Key 到位后在设置页填 baseUrl 即切换）。测试密钥来源：`TAIDE_LLM_API_KEY` 环境变量或 `~/.taide-api-key` 文件（不入库，测试自动跳过缺 Key 场景）。
 
 ---
 
