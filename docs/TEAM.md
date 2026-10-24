@@ -229,6 +229,14 @@ public interface SmartAction {
 - **A-1 已收口（2026-10-24）**：真实课件跑通 `ingestMaterials`——9 份讲义共 199 页 → 199 chunks（每页文本稀疏，绝大多数页不足 512 token 即一页一块；TEAM 原估 >800 是按更密语料估的，实际以语料为准）；页码边界已用 pymupdf 逐页交叉验证 6/6 一致；U+FFFD 乱码在摄取层已清理。人工抽 10 块核对页码待全组复核，A-2 嵌入+索引 10-25。
 - **A-2 已收口（2026-10-24，提前一天）**：`rag/embed/`（`BertTokenizer` WordPiece 分词、`OnnxEmbeddingModel` ONNX 本地推理 + 均值池化 + L2 归一化，模型输出为原始隐层故需池化）与 `rag/index/`（`InMemoryVectorIndex` 余弦检索 + §4.5 JSON 落盘原子写入、`IndexBuilder` 内容哈希缓存复用旧向量、`BuildIndexMain` 验收 CLI）。实测：199 块全量构建 **4.0s**（<60s 验收线）、缓存重建 **1.1s**（<3s 验收线，embedded=0/reused=199）；`index.json` 已被独立 Python 脚本读取验证（version/model/dim/384 维全对）；查询「what is constructor injection」top-1 命中 Lec-2 第 6 页 Constructors（0.484），语义正确。真模型测试（BERT 参考 id、向量归一化）需 `TAIDE_MODEL_DIR` + `-PliveModelTests=true`。新依赖 onnxruntime 1.20.0（C 审阅）。模型文件约 90MB 已本地化于 `D:\taide-models\`，插件内按需下载方案待 C 打包时定。
 - **A-3 已收口（2026-10-24，提前两天）**：`rag/retrieve/` 实现 `EmbeddingRetriever`（候选 24 → 相似度阈值 → MMR λ=0.7 去重 → top-k；返回冻结契约 `RetrievedChunk`）与 `RetrievalEvaluator` 评测框架 + 20 题评测集 `src/test/resources/rag/eval-questions.json`（15 题有答案、5 题课件无答案）。**调参记录（报告素材）**：初值阈值 0.35 下 top-3 命中 15/15（100%）、空判定 4/5（80%，压线；Kotlin 协程题假命中 Lec-5 p31 仅 0.410）；阈值上调至 **0.45** 后 15/15 + 5/5 双 100%，最弱真命中 0.481（RAG 题）与最强假命中 0.410 之间留有余量；MMR λ=0.7 维持 README 初值未动。验收 CLI：`./gradlew evalRetrieval --args="<课件目录> <index.json> <eval.json>"`；live 测试门禁 `RetrievalEvaluatorTest`（top3≥70%、空判定≥80%）已绿。
+- **A-5 已收口（2026-10-24，提前两天）**：`service/` 落地 `TaideServiceCore`（平台无关引擎：检索→组 prompt→LLM→带引用的 `TaAnswer`；无相关内容时 grounded=false 且 citations 为空）与 `TaideServiceImpl`（project service，从 B 的 `TaideUiSettings` 读 provider/baseUrl/model/PasswordSafe API Key，实现 B 的 `KnowledgeBaseController` SPI 供 Rebuild 按钮调用，带进度与取消、原子落盘保留旧索引）。`llm/OpenAiCompatibleLlmClient` 用 JDK HttpClient 实现 OpenAI 兼容 /chat/completions（DeepSeek 与同济 AGI 同一格式，换 baseUrl 即切后端），含 **30s 超时、失败重试 2 次、流式 SSE**——A-4 的核心要求已提前内建，10-27 只剩真实 Key 联调与反例复核。`resources/prompts/qa.md` v1：有依据时必须逐条标 [文档 · 页码]、无依据时输出规定句式「Response is based on general knowledge; no specific course material is referenced.」。运行时文件位置：`<IDE config>/taide/model/`（模型）与 `<IDE config>/taide/index/<project-hash>.json`（索引），不进项目目录。**⚠️ 请 B 在 plugin.xml 注册两行（集成 #1 前置）**：
+  ```xml
+  <projectService serviceInterface="edu.cst3492.taide.service.TaideService"
+                  serviceImplementation="edu.cst3492.taide.service.TaideServiceImpl"/>
+  <projectService serviceInterface="edu.cst3492.taide.ui.integration.KnowledgeBaseController"
+                  serviceImplementation="edu.cst3492.taide.service.TaideServiceImpl"/>
+  ```
+  测试：核心/客户端/流式/错误路径 16 个快速单测 + 真检索端到端 live 测试全绿。
 
 ---
 

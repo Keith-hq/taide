@@ -51,7 +51,16 @@ public final class OnnxEmbeddingModel implements EmbeddingModel {
     }
 
     public static OnnxEmbeddingModel openDefault() throws IOException {
-        Path dir = defaultModelDir();
+        return openDefaultOr(defaultModelDir());
+    }
+
+    /** Like {@link #openDefault()}, but falls back to {@code fallbackDir} (IDE config dir) when unset. */
+    public static OnnxEmbeddingModel openDefaultOr(Path fallbackDir) throws IOException {
+        String property = System.getProperty("taide.model.dir");
+        String env = System.getenv("TAIDE_MODEL_DIR");
+        String value = property != null && !property.isBlank() ? property
+                : env != null && !env.isBlank() ? env : null;
+        Path dir = value != null ? Path.of(value) : fallbackDir;
         Path model = dir.resolve("model.onnx");
         Path vocab = dir.resolve("vocab.txt");
         if (!Files.exists(model) || !Files.exists(vocab)) {
