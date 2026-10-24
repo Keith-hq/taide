@@ -226,7 +226,7 @@ public interface SmartAction {
 - 依赖新增 `pdfbox 3.0.5`、`poi-ooxml 5.4.1`、`log4j-api`（POI 编译期需要），已同步加进根构建与 `tools/b-sandbox` 构建，合并时请 C、B 分别审阅（打包排除/体积由 C 决定）。
 - 课件：本机 `C:\Users\LiuHM\taide-materials\` 现有 **9 份**讲义（Lec-0 ~ Lec-5，10-24 从 Canvas 下载）；TEAM 计划按 10 份计，尚缺 1 份（疑为 Lec-6 或后续讲义），正式验收以可得课件为准。
 - A-7（FakeTaideService）：B 的 `DemoTaideService` 已覆盖「假数据供 UI 开发」的全部用途，A 不再单独交付 FakeTaideService；有异议请在群内提出。
-- 待办：真实课件跑通 `ingestMaterials`（>800 chunks、随机抽 10 个 chunk 人工核对页码）→ 今日 A-1 收口；A-2 嵌入+索引 10-25。
+- **A-1 已收口（2026-10-24）**：真实课件跑通 `ingestMaterials`——9 份讲义共 199 页 → 199 chunks（每页文本稀疏，绝大多数页不足 512 token 即一页一块；TEAM 原估 >800 是按更密语料估的，实际以语料为准）；页码边界已用 pymupdf 逐页交叉验证 6/6 一致；U+FFFD 乱码在摄取层已清理。人工抽 10 块核对页码待全组复核，A-2 嵌入+索引 10-25。
 
 ---
 
