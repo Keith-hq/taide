@@ -44,6 +44,15 @@ public final class IndexBuilder {
     }
 
     public Result build(Path materialsDir, Path indexPath, Progress progress) throws IOException {
+        return build(materialsDir, indexPath, progress, () -> false);
+    }
+
+    /**
+     * Builds the index; {@code isCancelled} is polled between chunks. Cancellation
+     * preserves the previous index file because the save below is atomic.
+     */
+    public Result build(Path materialsDir, Path indexPath, Progress progress,
+                        java.util.function.BooleanSupplier isCancelled) throws IOException {
         progress = progress == null ? NOOP : progress;
 
         Map<String, float[]> cache = loadCache(indexPath);
@@ -65,12 +74,18 @@ public final class IndexBuilder {
         if (chunks.isEmpty()) {
             throw new IOException("No PDF/PPTX materials found in " + materialsDir);
         }
+        if (isCancelled.getAsBoolean()) {
+            throw new IOException("Index build cancelled");
+        }
 
         float[][] vectors = new float[chunks.size()][];
         List<String> pendingTexts = new ArrayList<>();
         List<Integer> pendingIndexes = new ArrayList<>();
         int reused = 0;
         for (int i = 0; i < chunks.size(); i++) {
+            if (isCancelled.getAsBoolean()) {
+                throw new IOException("Index build cancelled");
+            }
             float[] cached = cache.get(sha256(chunks.get(i).text()));
             if (cached != null) {
                 vectors[i] = cached;
