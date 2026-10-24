@@ -17,6 +17,7 @@ import edu.cst3492.taide.git.StagedChanges;
 import edu.cst3492.taide.rag.RetrievedChunk;
 
 import javax.imageio.ImageIO;
+import javax.swing.JButton;
 import javax.swing.JComponent;
 import javax.swing.JTable;
 import javax.swing.plaf.basic.BasicHTML;
@@ -80,10 +81,76 @@ public class AutomationPlatformTest extends BasePlatformTestCase {
         var opened = new AtomicReference<RetrievedChunk>();
         var model = new ModelStub("{}");
         services.bind(model, (query, k) -> List.of(source), opened::set);
+        assertTrue(services.canOpenSources());
         assertSame(model, services.model());
         assertSame(source, services.retriever().retrieve("query", 1).getFirst());
         services.openSource(source);
         assertSame(source, opened.get());
+        opened.set(null);
+        var captured = services.captureSourceOpener();
+        services.bind(model, (query, k) -> List.of(), ignored -> fail("A captured callback must keep the original binding."));
+        captured.accept(source);
+        assertSame(source, opened.get());
+    }
+
+    public void testDefaultSourceNavigationIsAvailableWithoutOpeningChat() {
+        var services = new AutomationServices(getProject());
+        assertTrue(services.canOpenSources());
+        assertNotNull(services.captureSourceOpener());
+    }
+
+    public void testReviewDialogKeepsCapturedSourceBinding() {
+        var services = AutomationServices.getInstance(getProject());
+        var source = source();
+        var opened = new AtomicReference<RetrievedChunk>();
+        var model = new ModelStub("{}");
+        services.bind(model, (query, k) -> List.of(source), opened::set);
+        var review = review(source);
+        var dialog = new AutomationDialogs.Review(getProject(), review);
+        try {
+            services.bind(model, (query, k) -> List.of(), ignored -> fail("An existing review must retain its callback."));
+            JButton open = findButton(dialog.createCenterPanel(), "Open course source");
+            assertNotNull(open);
+            assertTrue(open.isEnabled());
+            open.doClick();
+            assertSame(source, opened.get());
+        } finally {
+            dialog.close(AutomationDialogs.Review.OK_EXIT_CODE);
+        }
+    }
+
+    public void testReviewDialogUsesRequestCallbackAfterBindingsChange() {
+        var services = AutomationServices.getInstance(getProject());
+        var source = source();
+        var opened = new AtomicReference<RetrievedChunk>();
+        var model = new ModelStub("{}");
+        services.bind(model, (query, k) -> List.of(source), opened::set);
+        var captured = services.captureSourceOpener();
+        services.bind(model, (query, k) -> List.of(), ignored -> fail("The request callback must survive a later binding change."));
+        var dialog = new AutomationDialogs.Review(getProject(), review(source), captured);
+        try {
+            JButton open = findButton(dialog.createCenterPanel(), "Open course source");
+            assertNotNull(open);
+            assertTrue(open.isEnabled());
+            open.doClick();
+            assertSame(source, opened.get());
+        } finally {
+            dialog.close(AutomationDialogs.Review.OK_EXIT_CODE);
+        }
+    }
+
+    public void testSourceNavigationPropagatesCancellation() {
+        var services = new AutomationServices(getProject());
+        var cancelled = new ProcessCanceledException();
+        services.bind(new ModelStub("{}"), (query, k) -> List.of(), ignored -> {
+            throw cancelled;
+        });
+        try {
+            services.captureSourceOpener().accept(source());
+            fail("Cancellation must be propagated.");
+        } catch (ProcessCanceledException error) {
+            assertSame(cancelled, error);
+        }
     }
 
     public void testMissingServicesHaveReadableErrors() {
@@ -203,6 +270,12 @@ public class AutomationPlatformTest extends BasePlatformTestCase {
                 "Bind user input with PreparedStatement parameters.", 0.85);
     }
 
+    private static CourseReview review(RetrievedChunk source) {
+        return new CourseReview(List.of(new CourseReview.Finding(CourseReview.Severity.INFO,
+                "Use bound parameters", "The course explains parameter binding.",
+                "Use PreparedStatement.", List.of(source))), true);
+    }
+
     private static void pumpUntil(BooleanSupplier finished) throws Exception {
         long deadline = System.nanoTime() + 10_000_000_000L;
         // 后台任务的完成与取消回调由 EDT 处理。
@@ -254,6 +327,22 @@ public class AutomationPlatformTest extends BasePlatformTestCase {
                 JTable table = findTable(nested);
                 if (table != null) {
                     return table;
+                }
+            }
+        }
+        return null;
+    }
+
+    private static JButton findButton(Container container, String accessibleName) {
+        if (container instanceof JButton button
+                && accessibleName.equals(button.getAccessibleContext().getAccessibleName())) {
+            return button;
+        }
+        for (Component child : container.getComponents()) {
+            if (child instanceof Container nested) {
+                JButton button = findButton(nested, accessibleName);
+                if (button != null) {
+                    return button;
                 }
             }
         }

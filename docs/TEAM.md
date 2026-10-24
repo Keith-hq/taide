@@ -195,10 +195,11 @@ public interface SmartAction {
 2. **设置是不可变快照，凭据另存。** A 通过 `TaideUiSettings.snapshot()` 取得 Provider、base URL、模型、课件目录和演示开关；`readApiKey(snapshot)` 必须在后台线程执行。`revision()` 在设置或凭据更新后递增，问答服务据此使资源缓存失效。API Key 按项目、Provider 与端点存入 PasswordSafe，不写入 XML；旧版凭据升级后需重新输入，切换端点不得沿用其他端点的 Key。
 3. **重建需先保存目录。** 设置页点 Apply 后才能重建该目录。重建在后台显示进度并支持取消，发布新索引前检查取消状态；已经完成的原子发布不会因稍后取消设置而回滚。重建成功使聊天索引缓存失效；ONNX 会话按资源使用状态及项目生命周期释放。
 4. **演示来源与课件目录随消息保存。** 每条消息固定发送时的演示/真实标记和课件目录；同一会话中切换设置，不改变已有消息的标记，也不会把旧引用指向新目录中的同名课件。示例引用隐藏虚构分数，点击时只显示演示说明；真实引用通过原课件目录内的路径边界检查后打开文件，并提示用户手动定位页码，尚无 PDF/PPTX 页码深链。
-5. **C 的动作注册已接入，服务绑定另行完成。** 正式 `plugin.xml` 包含 `META-INF/taide-automation.xml`，F1 入口不再是注释占位。`AutomationServices.bind(llmClient, retriever, citationOpener)` 仍需项目集成提供，聊天 `TaideService` 注册不会自动替它绑定这些对象。详见 [AUTOMATION 服务接入](AUTOMATION.md#服务接入)。
+5. **C 的动作注册与默认引用导航已接入，模型和检索由 A/C 接入。** 正式 `plugin.xml` 包含 `META-INF/taide-automation.xml`，F1 入口不再是注释占位。`CourseSourceNavigator` 是独立的项目级服务，默认来源打开无需先打开聊天工具窗或调用 `bind`。`AutomationServices.bind(llmClient, retriever, citationOpener)` 可覆盖为自定义服务与导航回调；聊天 `TaideService` 注册不会自动暴露其内部模型和检索器。详见 [AUTOMATION 服务接入](AUTOMATION.md#服务接入)。
 6. **模型准备使用应用级服务。** `ModelSetupService` 管理所有项目共享的本地模型路径、准备状态与 revision；A 的问答和重建使用同一路径，目录变化后失效旧资源。用户点击后才下载官方固定版本的 MiniLM 模型与词表（约 90 MB，Apache 2.0），按固定大小和 SHA-256 校验，后台准备成功后保存在 `<IDE config>/taide/model/`。已校验缓存可离线复用，失败或取消不把半成品视为可用模型；关闭设置页只移除 UI 监听，不取消应用级下载。
 7. **首次使用按三步完成，模式切换必须显式。** 工具窗展示“模型 → API/课件与索引 → 真实问答”准备状态；用户先下载或在设置中选择固定版本的已有目录，填写 API 与课件目录并 Apply，再 Rebuild。模型未就绪时重建禁用。全部准备好后由用户点击“切换真实问答”，或保存关闭 `Use demo service`；下载完成不会自动关闭演示模式。API 状态只检查配置是否已填写，不代表网络连通、Key 有效或余额充足。
 8. **模型目录优先级与网络配置明确。** IDE 设置中显式选择的已有/默认目录优先；未显式选择时依次使用 `taide.model.dir` JVM 属性、`TAIDE_MODEL_DIR` 环境变量和默认目录，保留开发及 CLI 兼容。下载遵循 IDE HTTP Proxy，失败提示入口为 `Settings → Appearance & Behavior → System Settings → HTTP Proxy`，不猜测用户代理端口。普通用户不需要运行下载命令或配置环境变量。
+9. **审查引用使用请求前保存的导航回调。** `CourseReviewAction` 在后台生成前调用 `AutomationServices.captureSourceOpener()`：默认保存当前课件目录，存在自定义绑定时保存该回调对象，结果对话框持有这份回调。后续修改设置或重新绑定不会替换旧审查的回调；自定义回调自身负责保存所需的目录上下文。点击来源时传入原始 `RetrievedChunk`，默认导航在后台执行目录边界、重名及 PDF/PPTX 类型检查，在 EDT 打开文件并提示手动定位 1-based 页码，尚无页内深链。未配置目录或文件无效时给出可读提示；项目释放后停止打开和提示。
 
 ---
 
@@ -281,7 +282,7 @@ public interface SmartAction {
 **技术要点**
 - 聊天界面使用原生 Swing `ChatPanel`，IDE 适配层提供主题、剪贴板、设置与文件打开；纯 JDK 预览渲染同一个组件。
 - 问答与索引工作不在 EDT 执行。流式状态通知合并后在 EDT 批量渲染，取消或关闭后丢弃迟到的回调；错误提示不直接展示可能含凭据的异常正文。
-- 引用用 `FileEditorManager` 打开；PDF 与 PPTX 当前均提示手动定位页码，不宣称深链已实现。
+- 聊天与自动化审查共用项目级 `CourseSourceNavigator`，不依赖工具窗是否已打开；后台解析引用路径，在 EDT 用 `FileEditorManager` 打开文件。PDF 与 PPTX 当前均提示手动定位 1-based 页码，不宣称深链已实现。
 - Java PSI 读取在提交编辑器文档后进行；处理无选区、越界、行尾、内部类和已释放编辑器等边界。
 - 模型下载、文件校验、索引与凭据检查在后台进行；引导只展示当前已知状态，不把配置检查宣称为 API 连通性测试。
 
@@ -293,7 +294,8 @@ public interface SmartAction {
 - 拉取最新 main 后已接入 A 的项目级问答服务；重建通过 B 的控制器代理同一实例。修复设置变更后资源缓存失效、ONNX 会话释放及取消任务在索引发布前的检查；服务资源使用租约，避免正在回答时被重建直接关闭。
 - 凭据从只按 Provider 区分改为项目、Provider 与 API 端点隔离，旧 Key 需重新输入。设置页对可读目录、端点、Key 删除及取消状态提供明确反馈；错误不会直接回显服务端异常正文。
 - 消息保存发送时的 demo 标记与课件目录，切换模式或目录不污染历史引用；流式更新在 EDT 批量渲染，取消/关闭后忽略迟到回调。选区提取补齐 Java PSI 文档提交、行号与编辑器生命周期边界，并增加平台回归测试。
-- C 的三个 F1 动作已通过共享 XML 片段注册；真实模型、检索和引用导航仍需绑定，不能将 A 的聊天联调结果直接计作 F1 端到端验收。
+- C 的三个 F1 动作已通过共享 XML 片段注册；B 的默认引用导航已接入，并在审查请求前固定课件目录或自定义回调。真实模型和检索器仍需 A/C 接入，不能将 A 的聊天联调结果直接计作 F1 端到端验收。
+- 自动化引用导航补充验收（2026-10-24，Windows）：新增 12 项平台测试，完整套件 **182 项：180 通过、2 因符号链接权限跳过**。覆盖默认回调、目录和绑定快照、本地文件/VFS、路径拒绝、EDT 与模态回调；`buildPlugin`、`verifyPluginStructure`、`verifyPlugin` 均通过，兼容结论 `Compatible`，保留原有 6 处实验 API 提示。真实课件预览及完整 F1 链路仍需 IDE 人工验收。
 - 本次模型准备与引导验收（2026-10-24）：**97 项纯 JDK 行为检查通过**，生成 14 张原生聊天截图及 2 张设置页截图；目标 IDE 2024.2.4 的 Gradle 套件共 **170 项测试：168 通过、2 跳过**，跳过项均为 Windows 本机缺少符号链接创建权限的夹具。`buildPlugin`、`verifyPluginStructure` 与 `verifyPlugin` 均通过，兼容检查保留 6 处线程断言的实验性 API 提示。另用真实约 90 MB 模型验证了完整安装、SHA-256 校验、缓存复用及显式目录 ONNX 推理。安装器网络回归使用本地 HTTP/mock；本次没有调用真实问答 API，也未把该套件视为 IDE 内真实联网下载和完整课程问答的人工验收。PDF/PPTX 指定页深链仍未实现。 正式入口为根构建 `test` / `buildPlugin` / `verifyPluginStructure` / `verifyPlugin`；B 的纯 JDK 检查由 `tools/verify-b.ps1` 运行。
 - `verifyPlugin` 已完成并对 IC-242.23726.103 报告 Compatible；6 处实验 API 使用均为 `Application.assertIsNonDispatchThread`，不属于二进制不兼容错误。网络获取 documented incompatible changes 失败，因此未启用已知问题过滤。`examples/junit-demo` 的 `build` 通过，但 `test` 为 `NO-SOURCE`，该证据仅表示示例工程可构建。
 - 交付工具的 11 项 Python 检查通过（Python 3.13.5、pypdf 6.21.2、reportlab 4.5.1，依赖按锁版安装）。提交 ZIP 显式保留所有 `gradlew` Wrapper 的 `0755` 执行权限，修复 Windows NTFS 不提供执行位时 Linux 无法直接运行的问题。
@@ -482,6 +484,7 @@ refactor(llm): extract retry logic
 | 2026-10-21 | v1.0 | 初版：角色划分、接口契约、里程碑 | — |
 | 2026-10-24 | v1.1 | B 集成审查：更新真实服务注册、单实例重建、端点凭据隔离、取消与消息来源约定，修正 B 当前状态与运行入口 | B |
 | 2026-10-24 | v1.2 | 补充应用级模型准备、固定版本校验与共享目录、首次引导、代理和离线入口；明确 API 检查与显式切换真实问答的边界 | B |
+| 2026-10-24 | v1.3 | 接入自动化审查默认来源导航，明确请求前目录/回调快照、自定义绑定与手动定位页码边界；模型和检索仍待 A/C 接入 | B |
 
 ---
 

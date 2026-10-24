@@ -8,7 +8,7 @@
 | --- | --- | --- | --- |
 | 按需求生成 JUnit 测试 | `taide.generateTests` | Java 选区、完整源文件、自然语言场景 | 可编辑预览，确认后创建测试文件 |
 | 生成提交信息 | `taide.generateCommitMessage` | 所选仓库的全部暂存区差异 | Conventional Commit 预览、复制、确认后本地提交 |
-| 课件感知代码审查 | `taide.courseReview` | Java 选区、检索到的课程片段 | 严重度、问题说明、修正建议、可定位的来源引用 |
+| 课件感知代码审查 | `taide.courseReview` | Java 选区、检索到的课程片段 | 严重度、问题说明、修正建议、可打开文件并提示页码的来源引用 |
 
 动作入口位于编辑器右键菜单和 `Tools → TAIDE`。测试生成与代码审查在 Java 选区可用时启用。提交信息生成使用当前文件所属仓库，未选文件时使用项目目录。
 
@@ -48,7 +48,9 @@
 | `edu.cst3492.taide.service.CodeContext` | 文件、语言、选区、行号与所属类 |
 | `edu.cst3492.taide.action.automation.SmartAction` | B 侧直接调用智能动作的入口 |
 
-A 的模型与检索服务、B 的来源打开回调通过项目级绑定接入：
+B 的默认来源打开已由项目级 `CourseSourceNavigator` 提供，无需先打开聊天工具窗或调用 `bind`。`CourseReviewAction` 在启动后台审查前调用 `AutomationServices.captureSourceOpener()`，结果对话框持有返回的 `Consumer<RetrievedChunk>`。默认回调固定当时设置中的课件目录；若已通过 `bind` 提供自定义导航，则固定当时的回调对象。之后修改设置或重新绑定不会替换旧审查持有的回调；自定义回调自身负责保存所需的目录上下文。
+
+A/C 仍需将真实模型和检索器接入自动化运行时；聊天服务的配置不会自动完成这一步。`LlmClient` 和 `Retriever` 支持注册为同名接口的 IDEA 项目服务，也支持下面的项目级绑定。需要自定义来源打开行为时，`bind` 可同时覆盖默认导航：
 
 ```java
 import edu.cst3492.taide.action.automation.AutomationServices;
@@ -60,9 +62,9 @@ AutomationServices.getInstance(project).bind(
 );
 ```
 
-`citationOpener` 的类型为 `Consumer<RetrievedChunk>`。回调收到原始检索元数据，由 B 的引用导航器打开本地文件并定位页码。此回调在 EDT 执行。
+`citationOpener` 的类型为 `Consumer<RetrievedChunk>`。来源按钮在 EDT 将原始检索元数据传给已保存的回调，不改写文档名、页码、片段或分数。自定义回调应将阻塞 I/O 放到后台；默认导航已将路径解析与 VFS 刷新放在后台，随后在 EDT 打开课件和显示页码提示。
 
-`LlmClient` 和 `Retriever` 也支持注册为同名接口的 IDEA 项目服务。项目级 `bind` 优先于注册服务。引用打开回调通过 `bind` 提供。
+模型和检索器的项目级 `bind` 优先于注册服务；导航未绑定时使用 `CourseSourceNavigator`。默认导航只打开配置目录内通过校验的 PDF/PPTX，打开文件后提示用户手动定位到对应的 **1-based 页码**，尚未实现 PDF/PPTX 指定页深链。目录未配置、文件缺失、同名歧义、越界路径及无效页码会给出可读提示；项目关闭后不再打开文件或显示提示。
 
 模型调用与检索在后台任务中执行。`LlmClient` 负责网络超时、重试与请求取消；自动化层在任务开始和结果交付前检查取消状态。已取消任务会释放占用状态，并停止展示结果。模型密钥由 A 的设置和安全存储负责，自动化模块使用已配置的客户端。
 
@@ -126,7 +128,7 @@ JGit 对比 `HEAD` 树与暂存区 `DirCache`。首次提交使用空树作为�
 
 > Response is based on general knowledge; no specific course material is referenced.
 
-来源列表使用绑定的导航回调打开文档。结果复制保留问题说明、建议和引用页码。
+来源列表使用审查请求前保存的导航回调打开文档，默认由 B 的项目级导航器完成，也可由 `bind` 覆盖。打开文件后提示手动定位页码，无需先打开 TAIDE 聊天工具窗。结果复制保留问题说明、建议和引用页码。
 
 ## 验证
 
@@ -139,9 +141,11 @@ python3 -m venv .venv
 
 Java 测试涵盖生成输入、JUnit 编译、非法输出、引用核验、暂存区隔离、首次提交、重命名、二进制变更、冲突、暂存区变化、路径安全和多模块定位。平台测试覆盖动作注册、选区行号、后台线程与 EDT 回调、取消状态、VFS 创建及撤销，并生成界面截图。
 
-测试报告位于 `build/reports/tests/test/`，界面样本位于 `build/reports/ui/`。自动化测试使用合成示例与固定模型响应。真实模型、真实课件及来源导航在三方服务绑定后执行集成验收。
+测试报告位于 `build/reports/tests/test/`，界面样本位于 `build/reports/ui/`。自动化测试使用合成示例与固定模型响应。默认来源导航已接入；真实模型与检索器完成运行时接入后，仍需结合真实课件执行完整审查及来源打开的集成验收。
 
 本地验收环境为 WSL2、JDK 21 和 IDEA Community 2024.2.4：61 项 Java 测试、11 项 Python 测试、插件结构校验通过，Plugin Verifier 的结论为 `Compatible`。其中四项集成测试执行 B 模块现有的 53 条选区、会话、引用路径与设置行为检查。兼容性报告列出设置模块对 `assertIsNonDispatchThread()` 的三处实验性 API 调用。英文技术资料收录了实际预览组件的[界面样本](automation/TECHNICAL_NOTES.md#ui-samples)，可用于团队报告。
+
+自动化引用导航补充验收（2026-10-24，Windows、JDK 21、IDEA Community 2024.2.4）：新增 12 项平台测试后，完整 Gradle 套件 **182 项：180 通过、2 因本机符号链接权限跳过**；`buildPlugin`、`verifyPluginStructure`、`verifyPlugin` 均通过，兼容结论为 `Compatible`，保留原有 6 处实验 API 提示。平台测试使用本地合成文件和真实 VFS，覆盖目录/绑定快照、非法路径、EDT 及模态回调；真实课件的编辑器预览和完整 F1 链路仍需人工验收。
 
 ### 模型连通性
 
@@ -183,7 +187,8 @@ Java 测试涵盖生成输入、JUnit 编译、非法输出、引用核验、暂
 | 预览后重新暂存文件 | 提示重新生成提交信息 |
 | 课件命中 | 每条问题附原始文档与页码 |
 | 课件无命中 | 通用知识提示，引用为空 |
-| 点击来源 | B 的导航器打开对应课件及页码 |
+| 点击来源 | 默认导航打开审查开始时目录中的 PDF/PPTX，并提示手动定位到原始 1-based 页码；无指定页深链 |
+| 审查期间切换课件目录或重新绑定 | 旧审查仍使用其请求前保存的默认目录或自定义回调 |
 | IDEA 1366×768 | 对话框、文本与操作控件完整显示 |
 
 ## CI 与发布
