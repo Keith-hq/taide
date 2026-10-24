@@ -70,7 +70,7 @@ public final class InMemoryVectorIndex implements VectorIndex {
         PriorityQueue<ScoredChunk> top = new PriorityQueue<>(
                 (a, b) -> Double.compare(a.score(), b.score()));
         for (int i = 0; i < chunks.size(); i++) {
-            top.add(new ScoredChunk(chunks.get(i), cosine(query, vectors.get(i))));
+            top.add(new ScoredChunk(chunks.get(i), vectors.get(i), cosine(query, vectors.get(i))));
             if (top.size() > k) top.poll();
         }
         List<ScoredChunk> result = new ArrayList<>(top);

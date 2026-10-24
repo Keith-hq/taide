@@ -11,7 +11,7 @@ import java.util.List;
  */
 public interface VectorIndex {
 
-    record ScoredChunk(Chunk chunk, double score) {}
+    record ScoredChunk(Chunk chunk, float[] vector, double score) {}
 
     /** Returns up to {@code k} chunks closest to the query vector, best first. */
     List<ScoredChunk> search(float[] query, int k);
