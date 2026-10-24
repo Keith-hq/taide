@@ -90,6 +90,13 @@ class OpenAiCompatibleLlmClientTest {
     }
 
     @Test
+    void unreachableEndpointFailsWithReadableErrorInsteadOfCrashing() {
+        OpenAiCompatibleLlmClient client = new OpenAiCompatibleLlmClient("http://localhost:1", "k", "m");
+        LlmException error = assertThrows(LlmException.class, () -> client.complete("s", "u", 0));
+        assertTrue(error.getMessage().contains("unreachable after 3 attempts"));
+    }
+
+    @Test
     void normalizesBaseUrls() {
         assertEquals("https://api.deepseek.com/chat/completions",
                 OpenAiCompatibleLlmClient.normalize("https://api.deepseek.com"));
