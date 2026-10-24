@@ -1,6 +1,7 @@
 package edu.cst3492.taide.service;
 
 import com.intellij.openapi.application.PathManager;
+import edu.cst3492.taide.model.ModelSetupService;
 
 import java.nio.file.Path;
 
@@ -16,12 +17,7 @@ public final class TaidePaths {
     }
 
     public static Path modelDir() {
-        String property = System.getProperty("taide.model.dir");
-        String env = System.getenv("TAIDE_MODEL_DIR");
-        String value = property != null && !property.isBlank() ? property
-                : env != null && !env.isBlank() ? env : null;
-        if (value != null) return Path.of(value);
-        return Path.of(PathManager.getConfigPath(), "taide", "model");
+        return ModelSetupService.getInstance().directory();
     }
 
     public static Path indexPath(String projectHash) {

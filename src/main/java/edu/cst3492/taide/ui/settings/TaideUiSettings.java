@@ -12,12 +12,14 @@ import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.Arrays;
+import java.util.concurrent.atomic.AtomicLong;
 
 /** B-owned preferences. No API key is ever part of the XML state. */
 @State(name = "TaideUiSettings", storages = @Storage("taide-ui.xml"))
 public final class TaideUiSettings implements PersistentStateComponent<TaideUiSettings.Preferences> {
     private final Project project;
     private volatile Preferences preferences = new Preferences();
+    private final AtomicLong revision = new AtomicLong();
 
     public TaideUiSettings(Project project) { this.project = project; }
 
@@ -38,6 +40,7 @@ public final class TaideUiSettings implements PersistentStateComponent<TaideUiSe
     @Override public void loadState(@NotNull Preferences state) {
         preferences = copy(new SettingsSnapshot(state.provider, state.baseUrl, state.model,
                 state.courseDirectory, state.demoMode));
+        revision.incrementAndGet();
     }
 
     public SettingsSnapshot snapshot() {
@@ -46,31 +49,58 @@ public final class TaideUiSettings implements PersistentStateComponent<TaideUiSe
                 current.courseDirectory, current.demoMode);
     }
 
-    public void update(SettingsSnapshot value) { preferences = copy(value); }
+    public void update(SettingsSnapshot value) {
+        preferences = copy(value);
+        revision.incrementAndGet();
+    }
+
+    /** Changes after every successful preference or credential update; services can invalidate caches. */
+    public long revision() { return revision.get(); }
 
     /** Blocking PasswordSafe access: callers must use a worker thread. */
-    public @Nullable String readApiKey() { return readApiKey(snapshot().provider()); }
+    public @Nullable String readApiKey() { return readApiKey(snapshot()); }
 
     public @Nullable String readApiKey(String provider) {
+        return readApiKey(forProvider(provider));
+    }
+
+    public @Nullable String readApiKey(SettingsSnapshot value) {
         ApplicationManager.getApplication().assertIsNonDispatchThread();
-        return PasswordSafe.getInstance().getPassword(attributes(provider));
+        return PasswordSafe.getInstance().getPassword(attributes(value));
     }
 
     /** Consumes and clears the provided array even if secure storage fails. */
     public void saveApiKey(String provider, char[] key) {
-        ApplicationManager.getApplication().assertIsNonDispatchThread();
-        try { PasswordSafe.getInstance().setPassword(attributes(provider), new String(key)); }
+        saveApiKey(forProvider(provider), key);
+    }
+
+    public void saveApiKey(SettingsSnapshot value, char[] key) {
+        try {
+            ApplicationManager.getApplication().assertIsNonDispatchThread();
+            PasswordSafe.getInstance().setPassword(attributes(value), new String(key));
+            revision.incrementAndGet();
+        }
         finally { Arrays.fill(key, '\0'); }
     }
 
     public void clearApiKey(String provider) {
-        ApplicationManager.getApplication().assertIsNonDispatchThread();
-        PasswordSafe.getInstance().setPassword(attributes(provider), null);
+        clearApiKey(forProvider(provider));
     }
 
-    private CredentialAttributes attributes(String provider) {
+    public void clearApiKey(SettingsSnapshot value) {
+        ApplicationManager.getApplication().assertIsNonDispatchThread();
+        PasswordSafe.getInstance().setPassword(attributes(value), null);
+        revision.incrementAndGet();
+    }
+
+    private SettingsSnapshot forProvider(String provider) {
+        SettingsSnapshot current = snapshot();
+        return new SettingsSnapshot(provider, current.baseUrl(), current.model(), current.courseDirectory(), current.demoMode());
+    }
+
+    private CredentialAttributes attributes(SettingsSnapshot value) {
         return new CredentialAttributes(CredentialAttributesKt.generateServiceName(
-                "TAIDE", project.getLocationHash() + "/" + provider + "/API key"));
+                "TAIDE", project.getLocationHash() + "/" + value.provider() + "/" + value.credentialScope() + "/API key"));
     }
 
     private static Preferences copy(SettingsSnapshot value) {

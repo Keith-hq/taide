@@ -16,11 +16,12 @@ public final class SettingsValidation {
         if (!SettingsSnapshot.DEEPSEEK.equals(value.provider()) && !SettingsSnapshot.AGI.equals(value.provider())) {
             errors.add("Choose DeepSeek or AGI as the provider.");
         }
-        boolean connectionChanged = original == null || original.demoMode() != value.demoMode()
-                || !value.provider().equals(original.provider()) || !value.model().equals(original.model())
-                || !value.baseUrl().equals(original.baseUrl());
-        if (!value.demoMode() && connectionChanged) {
+        // A live request must never inherit an invalid endpoint from older saved state.
+        // Also keep URL credentials/query secrets out of the non-secret XML in demo mode.
+        if (!value.demoMode()) {
             if (value.model().isBlank()) errors.add("Enter the model ID supplied by your provider.");
+        }
+        if (!value.demoMode() || !value.baseUrl().isBlank()) {
             String endpointError = endpointError(value.baseUrl());
             if (endpointError != null) errors.add(endpointError);
         }
@@ -40,6 +41,7 @@ public final class SettingsValidation {
             boolean loopback = "localhost".equalsIgnoreCase(host) || "127.0.0.1".equals(host)
                     || "[::1]".equals(host) || "::1".equals(host);
             if (host == null || uri.getUserInfo() != null || uri.getQuery() != null || uri.getFragment() != null
+                    || uri.getPort() == 0 || uri.getPort() > 65535
                     || !("https".equalsIgnoreCase(uri.getScheme())
                     || (loopback && "http".equalsIgnoreCase(uri.getScheme())))) {
                 return "Enter an HTTPS API base URL without credentials, query parameters or a fragment.";

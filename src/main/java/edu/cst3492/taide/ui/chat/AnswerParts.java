@@ -13,24 +13,25 @@ public final class AnswerParts {
         List<Part> parts = new ArrayList<>();
         StringBuilder prose = new StringBuilder();
         StringBuilder code = null;
+        char fence = 0;
+        int fenceLength = 0;
         for (String line : markdown.split("\\R", -1)) {
-            if (line.stripLeading().startsWith("```")) {
-                if (code == null) {
-                    add(parts, prose, false);
-                    code = new StringBuilder();
-                } else {
-                    add(parts, code, true);
-                    code = null;
-                }
+            String trimmed = line.stripLeading();
+            char marker = trimmed.isEmpty() ? 0 : trimmed.charAt(0);
+            int count = 0;
+            if (marker == '`' || marker == '~') while (count < trimmed.length() && trimmed.charAt(count) == marker) count++;
+            if (code == null && count >= 3) {
+                add(parts, prose, false);
+                code = new StringBuilder(); fence = marker; fenceLength = count;
+            } else if (code != null && marker == fence && count >= fenceLength && trimmed.substring(count).isBlank()) {
+                add(parts, code, true);
+                code = null;
             } else {
                 (code == null ? prose : code).append(line).append('\n');
             }
         }
         if (code == null) add(parts, prose, false);
-        else {
-            prose.append(code).append("（代码块结束标记缺失）");
-            add(parts, prose, false);
-        }
+        else add(parts, code, true); // An unfinished streaming fence is still code, not an error.
         return List.copyOf(parts);
     }
 

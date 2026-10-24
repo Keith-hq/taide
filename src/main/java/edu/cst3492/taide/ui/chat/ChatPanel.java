@@ -16,21 +16,36 @@ public final class ChatPanel extends JPanel implements AutoCloseable {
     public interface Host {
         TaideService service();
         boolean demoMode();
+        default String courseDirectory() { return ""; }
         void settings();
         void openCitation(Citation citation);
+        default void openCitation(Citation citation, boolean demonstration) { openCitation(citation); }
+        default void openCitation(Citation citation, boolean demonstration, String materialsDirectory) { openCitation(citation, demonstration); }
         void copy(String text);
         default String scope() { return "CST3492 · Java 企业级应用开发"; }
         default Color color(String role, Color light) { return light; }
         default Font font() { return new Font("Microsoft YaHei UI", Font.PLAIN, 14); }
         default JScrollPane scrollPane(Component view) { return new JScrollPane(view); }
+        /** Null opts out for standalone previews; an unchecked snapshot shows the initial check. */
+        default SetupStatus setupStatus() { return null; }
+        default void prepareModel() { settings(); }
+        default void refreshSetup() { }
+        default void useLiveMode() { settings(); }
     }
     private final Host host;
     private final ConversationController controller;
-    private final JPanel messages = new MessageList();
+    private final MessageList messages = new MessageList();
     private final JPanel contextArea = new JPanel(new BorderLayout(8, 0));
     private final JLabel contextLabel = new JLabel();
     private final JLabel status = new JLabel("可以开始提问");
     private final JLabel mode = new JLabel();
+    private final JPanel setup = new JPanel(new BorderLayout(0, 4));
+    private final JLabel setupDetail = new JLabel();
+    private final JLabel setupModel = new JLabel();
+    private final JLabel setupApi = new JLabel();
+    private final JLabel setupStart = new JLabel();
+    private final JButton prepareModel = new JButton();
+    private final JButton startLive = new JButton("切换真实问答");
     private final JTextArea input = new JTextArea(3, 20) {
         @Override protected void paintComponent(Graphics graphics) {
             super.paintComponent(graphics);
@@ -81,10 +96,11 @@ public final class ChatPanel extends JPanel implements AutoCloseable {
         JPanel sheet = round(surface(), 16);
         sheet.setLayout(new BorderLayout()); sheet.setBorder(new EmptyBorder(16, 16, 12, 16));
         add(sheet, BorderLayout.CENTER);
-        JPanel modeBar = new JPanel(new BorderLayout()); modeBar.setOpaque(false);
+        JPanel modeBar = new JPanel(new BorderLayout(0, 8)); modeBar.setOpaque(false);
         modeBar.setBorder(new EmptyBorder(0, 0, 14, 0));
-        mode.setFont(host.font().deriveFont(12f)); mode.setForeground(muted()); modeBar.add(mode);
-        sheet.add(modeBar, BorderLayout.NORTH);
+        mode.setFont(host.font().deriveFont(12f)); mode.setForeground(muted()); modeBar.add(mode, BorderLayout.NORTH);
+        modeBar.add(setupGuide(), BorderLayout.CENTER);
+        sheet.add(new CenteredLane(modeBar, 820), BorderLayout.NORTH);
 
         messages.setBackground(surface());
         scroll = host.scrollPane(messages);
@@ -110,6 +126,57 @@ public final class ChatPanel extends JPanel implements AutoCloseable {
         fresh.addActionListener(e -> { controller.clear(); clearContext(); input.setText(""); input.requestFocusInWindow(); });
         JButton settings = secondary("设置"); settings.addActionListener(e -> host.settings());
         actions.add(fresh); actions.add(settings); bar.add(actions, BorderLayout.EAST); return bar;
+    }
+
+    /** The next action stays visible while a download or conversation is in progress. */
+    private JComponent setupGuide() {
+        setup.setOpaque(false);
+        setup.setBorder(new CompoundBorder(new LineBorder(border(), 1, true), new EmptyBorder(8, 10, 8, 10)));
+        setup.setName("first-use-guide");
+        JPanel heading = new JPanel(new BorderLayout()); heading.setOpaque(false);
+        heading.add(label("准备真实课程问答", 13, Font.BOLD));
+        JButton refresh = secondary("刷新"); refresh.setToolTipText("重新检查模型、API 配置与知识库");
+        refresh.addActionListener(e -> host.refreshSetup()); heading.add(refresh, BorderLayout.EAST);
+        setup.add(heading, BorderLayout.NORTH);
+        JPanel steps = new JPanel(new GridLayout(3, 1, 0, 0)); steps.setOpaque(false);
+        styleSecondary(prepareModel); prepareModel.addActionListener(e -> host.prepareModel());
+        prepareModel.setToolTipText("下载约 90 MB 的检索模型并配置；已有模型可在设置中选择目录");
+        steps.add(setupRow(setupModel, prepareModel));
+        JButton configure = secondary("打开设置"); configure.addActionListener(e -> host.settings());
+        configure.setToolTipText("配置 API、已有模型目录和课件目录，并重建知识库");
+        steps.add(setupRow(setupApi, configure));
+        styleSecondary(startLive); startLive.addActionListener(e -> host.useLiveMode());
+        steps.add(setupRow(setupStart, startLive)); setup.add(steps, BorderLayout.CENTER);
+        setupDetail.setFont(host.font().deriveFont(12f)); setupDetail.setForeground(muted());
+        setup.add(setupDetail, BorderLayout.SOUTH);
+        return setup;
+    }
+
+    private JComponent setupRow(JLabel label, JButton action) {
+        JPanel row = new JPanel(new BorderLayout(4, 0)); row.setOpaque(false);
+        label.setFont(host.font().deriveFont(12f)); label.setForeground(muted());
+        label.setMinimumSize(new Dimension(0, 20)); row.add(label);
+        action.setForeground(text()); row.add(action, BorderLayout.EAST);
+        return row;
+    }
+
+    private void refreshSetupGuide() {
+        SetupStatus state = host.setupStatus();
+        boolean visible = state != null && (!state.ready() || host.demoMode());
+        setup.setVisible(visible);
+        if (!visible) return;
+        setupModel.setText("1 检索模型 · " + (state.preparing() ? "准备中" : !state.checked() ? "检查中" : state.modelReady() ? "已就绪" : "待准备"));
+        prepareModel.setText(state.preparing() ? "正在准备…" : state.modelReady() ? "已准备" : "下载并配置");
+        prepareModel.setEnabled(state.checked() && !state.modelReady() && !state.preparing());
+        setupApi.setText("2 API 与课件 · " + (!state.checked() ? "检查中" : !state.apiReady() ? "待配置" : state.indexReady() ? "已配置" : "待建索引"));
+        setupStart.setText("3 " + (state.ready() ? "配置完成" : "完成准备后开始"));
+        startLive.setEnabled(state.ready());
+        String detail = !state.checked() && !state.preparing() ? "正在检查本地配置…" : state.detail().isBlank()
+                ? state.ready() ? "准备完成；演示历史会继续标为示例。" : "首次下载约 90 MB；已有模型可在设置中选择。"
+                : state.detail();
+        setupDetail.setText(detail); setupDetail.setToolTipText(detail);
+        setupModel.setToolTipText(setupModel.getText()); setupApi.setToolTipText(setupApi.getText());
+        setup.revalidate(); setup.repaint();
     }
 
     private JComponent composer() {
@@ -146,7 +213,7 @@ public final class ChatPanel extends JPanel implements AutoCloseable {
         JPanel foot = new JPanel(new BorderLayout(8, 0)); foot.setOpaque(false);
         status.setFont(host.font().deriveFont(12f)); status.setForeground(muted());
         foot.add(status, BorderLayout.CENTER); retry.setVisible(false); styleSecondary(retry);
-        retry.addActionListener(e -> { try { controller.retry(host.service()); } catch (RuntimeException ex) { showFailure(); } });
+        retry.addActionListener(e -> { try { controller.retry(host.service(), host.demoMode(), host.courseDirectory()); } catch (RuntimeException ex) { showFailure(); } });
         foot.add(retry, BorderLayout.EAST); base.add(foot, BorderLayout.SOUTH);
         input.getInputMap().put(KeyStroke.getKeyStroke(KeyEvent.VK_ENTER, 0), "send");
         input.getInputMap().put(KeyStroke.getKeyStroke(KeyEvent.VK_ENTER, InputEvent.SHIFT_DOWN_MASK), "insert-break");
@@ -163,10 +230,10 @@ public final class ChatPanel extends JPanel implements AutoCloseable {
     private void submitOrStop() {
         if (controller.snapshot().busy()) { controller.cancel(); return; }
         try {
-            if (controller.send(input.getText(), context, host.service())) input.setText("");
+            if (controller.send(input.getText(), context, host.service(), host.demoMode(), host.courseDirectory())) input.setText("");
         } catch (RuntimeException ex) { showFailure(); }
     }
-    private void showFailure() { status.setText("问答服务尚未连接，请在设置中启用演示模式或接入 A 的服务"); status.setToolTipText(status.getText()); }
+    private void showFailure() { status.setText("问答服务无法启动，请检查设置后重试"); status.setToolTipText(status.getText()); }
 
     /** Invoked on EDT after the editor snapshot was captured. */
     public void askAbout(CodeContext selected) {
@@ -193,6 +260,7 @@ public final class ChatPanel extends JPanel implements AutoCloseable {
         int previousScroll = bar.getValue(); shown = snapshot;
         messages.removeAll();
         mode.setText(host.demoMode() ? "演示模式 · 固定回答与示例引用" : "课程问答 · 引用请核对原文");
+        refreshSetupGuide();
         if (snapshot.messages().isEmpty()) welcome();
         else for (ConversationController.Message message : snapshot.messages()) addRow(message(message));
         messages.add(Box.createVerticalGlue());
@@ -235,13 +303,13 @@ public final class ChatPanel extends JPanel implements AutoCloseable {
         JPanel body = new JPanel(); body.setLayout(new BoxLayout(body, BoxLayout.Y_AXIS)); body.setOpaque(false);
         JPanel meta = new JPanel(new BorderLayout()); meta.setOpaque(false); meta.setBorder(new EmptyBorder(0, 0, 8, 0));
         JLabel who = label(message.user() ? "你" : "TAIDE", 12, Font.BOLD); who.setForeground(message.user() ? muted() : accent());
-        meta.add(who, BorderLayout.WEST);
+        meta.add(who, message.user() ? BorderLayout.EAST : BorderLayout.WEST);
         if (!message.user() && !message.text().isEmpty()) {
             JButton copy = secondary("复制"); copy.addActionListener(e -> { host.copy(message.text()); copy.setText("已复制");
                 Timer timer = new Timer(1600, ignored -> copy.setText("复制")); timer.setRepeats(false); timer.start(); });
             meta.add(copy, BorderLayout.EAST);
         }
-        meta.setAlignmentX(LEFT_ALIGNMENT); body.add(meta);
+        meta.setAlignmentX(message.user() ? RIGHT_ALIGNMENT : LEFT_ALIGNMENT); body.add(meta);
         if (message.user()) {
             JPanel bubble = round(raised(), 8); bubble.setLayout(new BorderLayout()); bubble.setBorder(new EmptyBorder(12, 14, 12, 14));
             bubble.add(prose(message.text(), raised(), false)); bubble.setMaximumSize(new Dimension(640, Integer.MAX_VALUE));
@@ -263,7 +331,7 @@ public final class ChatPanel extends JPanel implements AutoCloseable {
                 } else {
                     JLabel heading = label("课程依据 · " + message.citations().size() + " 条引用", 12, Font.BOLD);
                     heading.setForeground(muted()); heading.setAlignmentX(LEFT_ALIGNMENT); body.add(heading);
-                    for (Citation citation : message.citations()) { body.add(Box.createVerticalStrut(8)); body.add(citation(citation)); }
+                    for (Citation citation : message.citations()) { body.add(Box.createVerticalStrut(8)); body.add(citation(citation, message.demo(), message.courseDirectory())); }
                 }
                 if (!message.model().isBlank()) {
                     JLabel model = label(message.model(), 12, Font.PLAIN); model.setForeground(muted()); model.setAlignmentX(LEFT_ALIGNMENT);
@@ -278,26 +346,27 @@ public final class ChatPanel extends JPanel implements AutoCloseable {
         outer.add(body); return outer;
     }
 
-    private JComponent citation(Citation citation) {
+    private JComponent citation(Citation citation, boolean demonstration, String materialsDirectory) {
         JButton card = new JButton(); card.setLayout(new BorderLayout(0, 6)); card.setBackground(surface());
         card.setForeground(text()); card.setOpaque(true); card.setFocusPainted(true);
         card.setBorder(new CompoundBorder(new LineBorder(border(), 1, true), new EmptyBorder(10, 12, 10, 12)));
         String name = Objects.requireNonNullElse(citation.documentName(), "未命名课件");
-        JPanel line = new JPanel(new BorderLayout(8, 0)); line.setOpaque(false);
-        JLabel file = label(name, 12, Font.BOLD); file.setToolTipText(name); line.add(file, BorderLayout.CENTER);
-        double score = Double.isFinite(citation.score()) ? Math.max(0, Math.min(1, citation.score())) : 0;
-        String citationDetail = host.demoMode() ? "示例引用" : "相似度 " + Math.round(score * 100) + "%";
-        JLabel page = label("第 " + citation.slideNumber() + " 页 · " + citationDetail, 12, Font.PLAIN);
-        page.setForeground(muted()); line.add(page, BorderLayout.EAST); card.add(line, BorderLayout.NORTH);
+        JPanel line = new JPanel(new BorderLayout(0, 4)); line.setOpaque(false);
+        JLabel file = label(name, 12, Font.BOLD); file.setToolTipText(name);
+        file.setMinimumSize(new Dimension(0, file.getPreferredSize().height)); line.add(file, BorderLayout.NORTH);
+        String citationDetail = demonstration ? "示例引用" : Double.isFinite(citation.score())
+                ? "相似度 " + Math.round(Math.max(0, Math.min(1, citation.score())) * 100) + "%" : "相似度未知";
+        String location = citation.slideNumber() > 0 ? "第 " + citation.slideNumber() + " 页" : "页码缺失";
+        JLabel page = label(location + " · " + citationDetail, 12, Font.PLAIN);
+        page.setForeground(muted()); line.add(page, BorderLayout.CENTER); card.add(line, BorderLayout.NORTH);
         JComponent snippet = prose(Objects.requireNonNullElse(citation.snippet(), ""), surface(), false); snippet.setForeground(muted());
         // Child text remains selectable; open is also available by keyboard on the whole card.
         card.add(snippet, BorderLayout.CENTER);
-        card.setToolTipText(host.demoMode() ? "演示数据，仅用于预览引用卡片" : "打开课件；相似度是检索分数，不代表答案正确率");
+        card.setToolTipText(demonstration ? "演示数据，仅用于预览引用卡片" : "打开课件；相似度是检索分数，不代表答案正确率");
         card.getAccessibleContext().setAccessibleName("打开 " + name + " 第 " + citation.slideNumber() + " 页");
-        card.addActionListener(e -> host.openCitation(citation));
-        snippet.addMouseListener(new MouseAdapter() { public void mouseClicked(MouseEvent e) { host.openCitation(citation); } });
-        file.addMouseListener(new MouseAdapter() { public void mouseClicked(MouseEvent e) { host.openCitation(citation); } });
-        page.addMouseListener(new MouseAdapter() { public void mouseClicked(MouseEvent e) { host.openCitation(citation); } });
+        card.addActionListener(e -> host.openCitation(citation, demonstration, materialsDirectory));
+        file.addMouseListener(new MouseAdapter() { public void mouseClicked(MouseEvent e) { host.openCitation(citation, demonstration, materialsDirectory); } });
+        page.addMouseListener(new MouseAdapter() { public void mouseClicked(MouseEvent e) { host.openCitation(citation, demonstration, materialsDirectory); } });
         card.setAlignmentX(LEFT_ALIGNMENT); return card;
     }
 
@@ -339,14 +408,25 @@ public final class ChatPanel extends JPanel implements AutoCloseable {
     }
     private void addRow(JComponent component) {
         component.setAlignmentX(LEFT_ALIGNMENT);
-        JPanel wrapper = new JPanel(new BorderLayout()); wrapper.setOpaque(false); wrapper.add(component);
-        wrapper.setAlignmentX(LEFT_ALIGNMENT);
-        int height = component.getPreferredSize().height;
-        wrapper.setMinimumSize(new Dimension(0, height));
-        wrapper.setPreferredSize(new Dimension(820, height));
-        wrapper.setMaximumSize(new Dimension(820, height));
+        JPanel wrapper = new JPanel(new BorderLayout()) {
+            @Override public Dimension getPreferredSize() {
+                int width = messages.getWidth() > 0 ? messages.laneWidth()
+                        : Math.max(160, ChatPanel.this.getWidth() - 64);
+                component.setSize(width, Math.max(1, component.getHeight()));
+                layoutForWidth(component);
+                return new Dimension(width, component.getPreferredSize().height);
+            }
+        };
+        wrapper.setOpaque(false); wrapper.add(component);
+        wrapper.setMinimumSize(new Dimension(0, 0));
         wrapper.setAlignmentX(Component.CENTER_ALIGNMENT);
         messages.add(wrapper);
+    }
+    /** Wrapped text height is a function of the current lane width, including after dock resizing. */
+    private static void layoutForWidth(Container parent) {
+        parent.invalidate(); parent.doLayout();
+        for (Component child : parent.getComponents()) if (child instanceof Container nested) layoutForWidth(nested);
+        parent.invalidate();
     }
     private JLabel label(String text, int size, int weight) {
         JLabel label = new JLabel(text); label.setFont(host.font().deriveFont(weight, (float) size)); label.setForeground(text()); return label;
@@ -412,7 +492,14 @@ public final class ChatPanel extends JPanel implements AutoCloseable {
         }
     }
     private static final class MessageList extends JPanel implements Scrollable {
-        MessageList() { setLayout(null); }
+        MessageList() {
+            setLayout(null);
+            setBorder(new EmptyBorder(0, 4, 0, 16));
+        }
+        private int laneWidth() {
+            Insets insets = getInsets();
+            return Math.min(820, Math.max(0, getWidth() - insets.left - insets.right));
+        }
         @Override public Dimension getPreferredSize() {
             int height = 0;
             for (Component child : getComponents())
@@ -420,14 +507,15 @@ public final class ChatPanel extends JPanel implements AutoCloseable {
             return new Dimension(820, height);
         }
         @Override public void doLayout() {
-            int width = Math.min(820, Math.max(0, getWidth() - 8));
-            int x = (getWidth() - width) / 2;
-            int y = 0;
+            Insets insets = getInsets();
+            int width = laneWidth();
+            int x = insets.left + (getWidth() - insets.left - insets.right - width) / 2;
+            int y = insets.top;
             Component[] children = getComponents();
             for (int index = 0; index < children.length; index++) {
                 Component child = children[index];
                 int height = child instanceof Box.Filler
-                        ? Math.max(0, getHeight() - y) : child.getPreferredSize().height;
+                        ? Math.max(0, getHeight() - insets.bottom - y) : child.getPreferredSize().height;
                 child.setBounds(x, y, width, height);
                 y += height;
             }
@@ -442,6 +530,8 @@ public final class ChatPanel extends JPanel implements AutoCloseable {
     }
     /** Screenshot and smoke-test access to the real native component. */
     public ConversationController conversation() { return controller; }
-    public void refreshMode() { if (!closed) render(controller.snapshot()); }
+    /** Model progress changes update the compact guide without rebuilding conversation rows. */
+    public void refreshSetupStatus() { if (!closed) { refreshSetupGuide(); revalidate(); repaint(); } }
+    public void refreshMode() { if (!closed) { pending = null; render(controller.snapshot()); } }
     @Override public void close() { closed = true; updates.stop(); controller.close(); }
 }

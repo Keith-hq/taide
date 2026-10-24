@@ -4,9 +4,11 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
 import java.nio.file.Files;
+import java.nio.file.FileSystemException;
 import java.nio.file.Path;
 
 import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
 class TestFileWriterTest {
     @TempDir
@@ -34,7 +36,16 @@ class TestFileWriterTest {
         var malicious = new GeneratedTest("", "../../../OutsideTest", "");
         assertThrows(AutomationException.class, () -> TestFileWriter.destination(directory, malicious));
         Path target = Files.createDirectory(directory.resolve("actual"));
-        Path linked = Files.createSymbolicLink(directory.resolve("linked"), target);
+        Path linked;
+        try {
+            linked = Files.createSymbolicLink(directory.resolve("linked"), target);
+        } catch (FileSystemException | SecurityException unsupported) {
+            // Windows workstations without Developer Mode/SeCreateSymbolicLinkPrivilege
+            // cannot create the fixture. The production guard remains covered on CI and
+            // by the non-link traversal assertion above.
+            assumeTrue(false, "symbolic-link fixture unavailable: " + unsupported.getMessage());
+            return;
+        }
         var generated = TestGenerator.validate(TestGeneratorTest.TEST_SOURCE, "demo");
         assertThrows(AutomationException.class, () -> TestFileWriter.destination(linked, generated));
     }
