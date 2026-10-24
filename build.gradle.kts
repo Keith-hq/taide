@@ -150,6 +150,7 @@ tasks {
         systemProperty("taide.test.javac", testCompiler.get().executablePath.asFile.absolutePath)
         systemProperty("taide.model.dir", providers.environmentVariable("TAIDE_MODEL_DIR").getOrElse(""))
         systemProperty("taide.materials.dir", providers.environmentVariable("TAIDE_MATERIALS_DIR").getOrElse(""))
+        systemProperty("taide.llm.api.key", providers.environmentVariable("TAIDE_LLM_API_KEY").getOrElse(""))
         systemProperty("java.awt.headless", "true")
         maxHeapSize = "1536m"
         timeout.set(Duration.ofMinutes(if (liveModelTests.get()) 15 else 5))
