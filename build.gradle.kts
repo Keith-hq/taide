@@ -22,6 +22,11 @@ dependencies {
     implementation("com.github.javaparser:javaparser-core:3.26.3")
     implementation("org.eclipse.jgit:org.eclipse.jgit:7.1.0.202411261347-r")
 
+    // A（RAG 摄取/切块）：PDFBox 逐页解析 + POI XSLF 逐片解析。合并前请 C 审阅打包排除。
+    implementation("org.apache.pdfbox:pdfbox:3.0.5")
+    implementation("org.apache.poi:poi-ooxml:5.4.1")
+    implementation("org.apache.logging.log4j:log4j-api:2.24.3")
+
     testImplementation(platform("org.junit:junit-bom:5.11.4"))
     testImplementation("org.junit.jupiter:junit-jupiter")
     testImplementation("org.apiguardian:apiguardian-api:1.1.2")
@@ -92,6 +97,13 @@ val testCompiler = javaToolchains.compilerFor {
 val liveModelTests = providers.gradleProperty("liveModelTests").map(String::toBoolean).orElse(false)
 
 tasks {
+    // A-1 验收 CLI：解析课件目录并打印分块统计与抽样（A 所有，C 审阅）。
+    register<JavaExec>("ingestMaterials") {
+        group = "verification"
+        description = "Ingest a course materials directory and print chunk stats + samples"
+        classpath = sourceSets.main.get().runtimeClasspath
+        mainClass.set("edu.cst3492.taide.rag.ingest.IngestMain")
+    }
     register("validateReleaseVersion") {
         doLast {
             val tag = providers.environmentVariable("GITHUB_REF_NAME").getOrElse("")

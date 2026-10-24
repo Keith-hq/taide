@@ -219,6 +219,15 @@ public interface SmartAction {
 
 **风险**：embedding 模型体积（ONNX MiniLM ≈ 90MB）会让插件包变大。预案：模型按需下载 + 校验和，首次启动时拉取。
 
+#### A 实现进度记录（2026-10-24）
+
+- A-1 首版代码已提交工作区（分支 `feat/a-rag-index`）：`rag/ingest/`（`PdfIngestor` 逐页解析、`PptxIngestor` 逐片解析含备注、`CourseMaterial`）、`rag/chunk/SlideAwareChunker`（512/64、绝不跨页、id=`文档#页码#序号`）、`rag/Chunk`、`IngestMain` 验收 CLI（`./gradlew ingestMaterials --args="<课件目录>"`），配 3 个 JUnit 测试类（页码 1-based、跨页禁止、硬切分、重叠、空片跳过）。
+- 技术栈取舍：PDF 用 **PDFBox**（Tika 的 PDF 底层引擎）直接逐页提取，保证页码与阅读器一致，避免 XHTML 再解析一层；PPTX 按预案用 **POI XSLF**（不用 Tika 纯文本）。README 技术栈徽章（Tika）请 B 择机更新为「PDFBox/POI（Tika 生态）」。
+- 依赖新增 `pdfbox 3.0.5`、`poi-ooxml 5.4.1`、`log4j-api`（POI 编译期需要），已同步加进根构建与 `tools/b-sandbox` 构建，合并时请 C、B 分别审阅（打包排除/体积由 C 决定）。
+- 课件：本机 `C:\Users\LiuHM\taide-materials\` 现有 **9 份**讲义（Lec-0 ~ Lec-5，10-24 从 Canvas 下载）；TEAM 计划按 10 份计，尚缺 1 份（疑为 Lec-6 或后续讲义），正式验收以可得课件为准。
+- A-7（FakeTaideService）：B 的 `DemoTaideService` 已覆盖「假数据供 UI 开发」的全部用途，A 不再单独交付 FakeTaideService；有异议请在群内提出。
+- 待办：真实课件跑通 `ingestMaterials`（>800 chunks、随机抽 10 个 chunk 人工核对页码）→ 今日 A-1 收口；A-2 嵌入+索引 10-25。
+
 ---
 
 ### 5.2 B — UI/UX & Context Lead
