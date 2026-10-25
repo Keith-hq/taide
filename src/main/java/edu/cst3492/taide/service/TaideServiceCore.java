@@ -30,6 +30,15 @@ public final class TaideServiceCore implements TaideService {
         this.modelName = modelName;
     }
 
+    /** Package-private accessors for {@link AutomationRuntimeAccess} (issue #10 A-C-02). */
+    LlmClient llmClient() {
+        return llm;
+    }
+
+    Retriever retriever() {
+        return retriever;
+    }
+
     @Override
     public TaAnswer ask(String question, CodeContext context) throws TaideException {
         requireQuestion(question);

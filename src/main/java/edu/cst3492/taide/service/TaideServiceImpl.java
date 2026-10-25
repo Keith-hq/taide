@@ -19,7 +19,9 @@ import edu.cst3492.taide.ui.settings.TaideUiSettings;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.function.BiFunction;
 import java.util.function.Consumer;
+import java.util.function.Function;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.locks.ReentrantLock;
 
@@ -30,15 +32,21 @@ import java.util.concurrent.locks.ReentrantLock;
  * All heavy work (index, model, LLM) runs on the calling thread — callers must
  * stay off the EDT per the frozen contract.
  */
-public final class TaideServiceImpl implements TaideService, KnowledgeBaseController, Disposable {
+public final class TaideServiceImpl implements TaideService, KnowledgeBaseController, Disposable, AutomationRuntimeAccess {
 
     private final Project project;
     private final ServiceResourceCache<CoreResources> resources = new ServiceResourceCache<>();
+    private final ServiceResourceCache<ModelResources> modelOnly = new ServiceResourceCache<>();
     private final ReentrantLock rebuildLock = new ReentrantLock();
     private final AtomicBoolean disposed = new AtomicBoolean();
 
     private record CoreResources(TaideServiceCore core, OnnxEmbeddingModel model) implements AutoCloseable {
         @Override public void close() throws IOException { model.close(); }
+    }
+
+    /** Model-only resources for A-C-01: no ONNX session, so nothing to release. */
+    private record ModelResources(LlmClient llm) implements AutoCloseable {
+        @Override public void close() { }
     }
 
     public TaideServiceImpl(Project project) {
@@ -54,13 +62,7 @@ public final class TaideServiceImpl implements TaideService, KnowledgeBaseContro
         SettingsSnapshot settings = preferences.snapshot();
         Path modelDirectory = TaidePaths.modelDir();
         return resources.acquire(revision, () -> {
-            if (!SettingsValidation.validate(settings, null).isEmpty()) {
-                throw new TaideException("Invalid TAIDE settings. Check the provider, API base URL and model in Settings → Tools → TAIDE.");
-            }
-            String apiKey = preferences.readApiKey(settings);
-            if (apiKey == null || apiKey.isBlank()) {
-                throw new TaideException("No API key configured: open Settings → Tools → TAIDE and enter one.");
-            }
+            LlmClient llm = createLlmClient();
             Path indexPath = TaidePaths.indexPath(project.getLocationHash());
             if (!Files.exists(indexPath)) {
                 throw new TaideException("Knowledge base not built yet: open Settings → Tools → TAIDE → Rebuild Knowledge Base.");
@@ -70,7 +72,6 @@ public final class TaideServiceImpl implements TaideService, KnowledgeBaseContro
                 model = OnnxEmbeddingModel.openDirectory(modelDirectory);
                 InMemoryVectorIndex index = InMemoryVectorIndex.load(indexPath);
                 Retriever retriever = new EmbeddingRetriever(index, model);
-                LlmClient llm = new OpenAiCompatibleLlmClient(settings.baseUrl(), apiKey, settings.model());
                 PromptLibrary prompts = new PromptLibrary();
                 return new CoreResources(new TaideServiceCore(retriever, llm, prompts, settings.model()), model);
             } catch (IOException | RuntimeException e) {
@@ -78,6 +79,38 @@ public final class TaideServiceImpl implements TaideService, KnowledgeBaseContro
                 throw new TaideException("TAIDE failed to load its knowledge base or model. Check the configured model files and rebuild the index.", e);
             }
         });
+    }
+
+    /** Settings-validated LLM client shared by the chat path and A-C-01 (issue #10). */
+    private LlmClient createLlmClient() throws TaideException {
+        TaideUiSettings preferences = TaideUiSettings.getInstance(project);
+        SettingsSnapshot settings = preferences.snapshot();
+        if (!SettingsValidation.validate(settings, null).isEmpty()) {
+            throw new TaideException("Invalid TAIDE settings. Check the provider, API base URL and model in Settings → Tools → TAIDE.");
+        }
+        String apiKey = preferences.readApiKey(settings);
+        if (apiKey == null || apiKey.isBlank()) {
+            throw new TaideException("No API key configured: open Settings → Tools → TAIDE and enter one.");
+        }
+        return new OpenAiCompatibleLlmClient(settings.baseUrl(), apiKey, settings.model());
+    }
+
+    @Override
+    public <T> T withModel(Function<LlmClient, T> operation) throws TaideException {
+        ApplicationManager.getApplication().assertIsNonDispatchThread();
+        if (disposed.get()) throw new TaideException("TAIDE project has been closed.");
+        long revision = TaideUiSettings.getInstance(project).revision();
+        try (var lease = modelOnly.acquire(revision, () -> new ModelResources(createLlmClient()))) {
+            return operation.apply(lease.value().llm());
+        }
+    }
+
+    @Override
+    public <T> T withModelAndRetriever(BiFunction<LlmClient, Retriever, T> operation) throws TaideException {
+        try (var lease = core()) {
+            TaideServiceCore core = lease.value().core();
+            return operation.apply(core.llmClient(), core.retriever());
+        }
     }
 
     @Override

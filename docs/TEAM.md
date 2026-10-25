@@ -254,6 +254,7 @@ public interface SmartAction {
   测试：核心/客户端/流式/错误路径 16 个快速单测 + 真检索端到端 live 测试全绿。
 - **A-4 已收口（2026-10-24，提前三天）**：真实 DeepSeek 联调通过——`complete` 返回 TAIDE_OK、流式产出 token；**真实检索 + 真实 DeepSeek 端到端**：问「What is a chained exception?」返回 grounded 带引用回答（Lec-3.1 p9）、问「CSS Flexbox」返回通用知识模式且含规定句式。超时 30s / 重试 2 次 / 断网抛可读 `TaideException` 均有单测覆盖（`RealLlmLiveTest`、`OpenAiCompatibleLlmClientTest`）。双后端本质：同一 OpenAI 兼容客户端换 baseUrl（DeepSeek 已实测；同济 AGI 平台同格式，待 Key 到位后在设置页填 baseUrl 即切换）。测试密钥来源：`TAIDE_LLM_API_KEY` 环境变量或 `~/.taide-api-key` 文件（不入库，测试自动跳过缺 Key 场景）。
 - **A-6 已收口（2026-10-24，提前四天）**：`prompts/qa.md` v1 通过三组反例实测（`PromptAdversarialLiveTest`，真实 DeepSeek）：① 课件外问题 + 强制要求引用 → 拒绝编造、说出规定句式，且回答中无伪造的「Lec-*.pdf … page N」引用模式（正则断言）；② 假前提「课件说 Java 是动态类型（Lec-1 p10）」→ 纠正为静态类型；③ 索要精确页码 → 回答中出现的页码全部属于检索到的引用集。v1 一次通过无需改版。**A-1~A-7 至此全部收口**（A-7 由 B 的 DemoTaideService 覆盖）。
+- **A-C 共享运行时已交付（2026-10-25，响应 [Issue #10](https://github.com/Keith-hq/taide/issues/10)）**：`service/AutomationRuntimeAccess` 接口落地——`withModel`（仅模型，**不要求索引、不加载 ONNX**，供 F1.1/F1.2）与 `withModelAndRetriever`（复用 F0 的 `ServiceResourceCache` 租约与同一索引，供 F1.3）。`TaideServiceImpl` 实现该接口，C 经已注册的 `TaideService` 转型消费，**无需新增 plugin.xml 注册**。验收实测：注册服务即 `AutomationRuntimeAccess`（平台测试）；无 Key / 无索引 / 项目关闭均抛可读 `TaideException`；真实 Key 下 `withModel` 无索引可用（TAIDE_OK 往返）、`withModelAndRetriever` 检索命中 Lec-3.1 p9；租约成败均释放（B 的缓存生命周期测试已覆盖）。取消传播：回调内异常原样抛出，租约由 try-with-resources 必释。平台测试需注意测试线程在 EDT，服务调用走 worker 线程（测试内 `callOffEdt` 辅助）。
 
 ---
 
