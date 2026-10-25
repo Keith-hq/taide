@@ -12,6 +12,7 @@ import java.util.function.Consumer;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -124,5 +125,14 @@ class TaideServiceCoreTest {
     void blankQuestionIsRejected() throws Exception {
         TaideServiceCore core = core(new StubRetriever(List.of()), new StubLlm());
         assertThrows(TaideException.class, () -> core.ask("  ", CodeContext.empty()));
+    }
+
+    @Test
+    void exposesLlmAndRetrieverForAutomationRuntimeAccess() throws Exception {
+        StubRetriever retriever = new StubRetriever(List.of());
+        StubLlm llm = new StubLlm();
+        TaideServiceCore core = core(retriever, llm);
+        assertSame(llm, core.llmClient());
+        assertSame(retriever, core.retriever());
     }
 }
