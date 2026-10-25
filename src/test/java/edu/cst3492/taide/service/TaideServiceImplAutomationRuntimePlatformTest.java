@@ -29,6 +29,11 @@ public class TaideServiceImplAutomationRuntimePlatformTest extends BasePlatformT
     }
 
     public void testWithModelWithoutApiKeyFailsReadably() throws Exception {
+        // Deterministic regardless of test order: make sure no key is stored first.
+        callOffEdt(() -> {
+            TaideUiSettings.getInstance(getProject()).clearApiKey("DeepSeek");
+            return null;
+        });
         TaideServiceImpl service = new TaideServiceImpl(getProject());
         try {
             callOffEdt(() -> service.withModel(model -> "unused"));
@@ -41,8 +46,12 @@ public class TaideServiceImplAutomationRuntimePlatformTest extends BasePlatformT
     }
 
     public void testWithModelAndRetrieverWithoutIndexFailsReadably() throws Exception {
-        // A live test may have built an index into the shared config dir; this test
-        // asserts the no-index error, so start from a clean slate.
+        // Deterministic regardless of test order: save a dummy key (the no-key error
+        // is covered by its own test), remove any index, then expect the no-index error.
+        callOffEdt(() -> {
+            TaideUiSettings.getInstance(getProject()).saveApiKey("DeepSeek", "test-key".toCharArray());
+            return null;
+        });
         Files.deleteIfExists(TaidePaths.indexPath(getProject().getLocationHash()));
         TaideServiceImpl service = new TaideServiceImpl(getProject());
         try {
