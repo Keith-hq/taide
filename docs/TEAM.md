@@ -89,7 +89,7 @@
 | `build.gradle.kts` / `gradle.properties` / `.github/**` | **C** | 构建、CI、打包 |
 | `docs/TEAM.md` | 全员 | 各自改自己章节，改完在群里说一声 |
 | `README.md` | **B** | 对外门面 |
-| `docs/TAIDE-B-English-Report-V*.docx` | **B** 主笔 | 当前 V1.2.0 为贡献草稿，A、C 提供技术章节，团队整合为最终报告 |
+| `docs/TAIDE-B-English-Report-V1.2.0.docx` | **B** 主笔 | 当前贡献草稿，A、C 提供技术章节，团队整合为最终报告 |
 
 ⚠️ `plugin.xml` 是三人唯一的物理冲突点。**B 是唯一有权提交它的人**，C 的三个 action 由 B 代为注册。这条不遵守，第一天就会冲突。
 
@@ -315,7 +315,7 @@ public interface SmartAction {
 - 本次模型准备与引导验收（2026-10-24）：**97 项纯 JDK 行为检查通过**，生成 14 张原生聊天截图及 2 张设置页截图；目标 IDE 2024.2.4 的 Gradle 套件共 **170 项测试：168 通过、2 跳过**，跳过项均为 Windows 本机缺少符号链接创建权限的夹具。`buildPlugin`、`verifyPluginStructure` 与 `verifyPlugin` 均通过，兼容检查保留 6 处线程断言的实验性 API 提示。另用真实约 90 MB 模型验证了完整安装、SHA-256 校验、缓存复用及显式目录 ONNX 推理。安装器网络回归使用本地 HTTP/mock；本次没有调用真实问答 API，也未把该套件视为 IDE 内真实联网下载和完整课程问答的人工验收。PDF/PPTX 指定页深链仍未实现。 正式入口为根构建 `test` / `buildPlugin` / `verifyPluginStructure` / `verifyPlugin`；B 的纯 JDK 检查由 `tools/verify-b.ps1` 运行。
 - `verifyPlugin` 已完成并对 IC-242.23726.103 报告 Compatible；6 处实验 API 使用均为 `Application.assertIsNonDispatchThread`，不属于二进制不兼容错误。网络获取 documented incompatible changes 失败，因此未启用已知问题过滤。`examples/junit-demo` 的 `build` 通过，但 `test` 为 `NO-SOURCE`，该证据仅表示示例工程可构建。
 - 交付工具的 11 项 Python 检查通过（Python 3.13.5、pypdf 6.21.2、reportlab 4.5.1，依赖按锁版安装）。提交 ZIP 显式保留所有 `gradlew` Wrapper 的 `0755` 执行权限，修复 Windows NTFS 不提供执行位时 Linux 无法直接运行的问题。
-- [B 英文报告贡献草稿 V1.2.0](TAIDE-B-English-Report-V1.2.0.docx)同步模型准备、首次引导、正式 F1 运行时与引用导航边界；旧版保留。草稿仍需对照作业原文统一五节标题、补全 A/C 内容与成员资料、纳入真实验收证据后再定稿。
+- [B 英文报告贡献草稿 V1.2.0](TAIDE-B-English-Report-V1.2.0.docx)同步模型准备、首次引导、正式 F1 运行时与引用导航边界。草稿仍需对照作业原文统一五节标题、补全 A/C 内容与成员资料、纳入真实验收证据后再定稿。
 - 应用级模型准备与首次使用引导已实现：点击下载、真实进度、完整校验、已有目录/默认目录、取消与代理错误提示；模型、API/课件与索引按状态展示，真实问答仍由用户显式启用。本批次已校正 README、协作与验收文档，并更新 Word 草稿；自用技术文档仅保存在本地，不纳入团队仓库。
 
 ---

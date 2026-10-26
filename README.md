@@ -27,7 +27,7 @@
 > [!IMPORTANT]
 > **当前状态：F0 与 F1 三个智能动作均已在代码中接入正式项目服务，正在进行实机验收与交付准备。** 最新核查基线为 `main` 的 `525b9e0`，最后更新：2026-10-26。
 > 聊天默认开启演示模式，返回明确标注的固定示例。真实课程问答需要检索模型、课件索引和有效 API Key，并由用户显式关闭演示模式。F1 动作使用实际配置的 API，不由聊天演示模式提供固定答案。
-> [六项 Windows IDEA 验收](docs/e2e/E2E_RESULTS.md)仍为 `E2E_NOT_RUN`；代码接通与 CI 通过不代表人工验收完成。操作步骤见 [验收指南](docs/e2e/E2E_GUIDE.md)。
+> [六项 Windows IDEA 验收](docs/e2e/E2E_RESULTS.md)仍为 `E2E_NOT_RUN`；代码接通与 CI 通过不代表人工验收完成。操作步骤见 [验收指南](docs/e2e/E2E_GUIDE.md)和 [六项真实场景 Word 操作文档](docs/TAIDE-Windows-IDEA六项真实场景验收操作文档-V1.0.0.docx)。
 
 ---
 
@@ -253,7 +253,7 @@ taide/
 ├── tools/                   # B 辅助沙箱、纯 Java 检查与 Swing 预览源码
 ├── scripts/                 # 连通性与作业打包工具
 ├── examples/junit-demo/     # 智能测试生成示例工程
-├── docs/                    # TEAM、自动化说明及报告贡献草稿
+├── docs/                    # TEAM、自动化说明、验收文档及报告贡献草稿
 ├── .github/workflows/       # CI / 发布工作流
 └── build.gradle.kts         # 全组正式构建入口
 ```
