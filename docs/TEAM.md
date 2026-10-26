@@ -12,17 +12,29 @@
 | 仓库 | https://github.com/Keith-hq/taide |
 | 提交截止 | **2026-11-03（周二）23:00** |
 | 演示 | **2026-11-04（周三）13:30–16:15** |
-| 文档版本 | v1.2 · 2026-10-24（模型准备与首次使用引导） |
+| 文档版本 | v1.4 · 2026-10-26（正式运行时、实机验收与文档校正） |
 
 ---
 
-## 0. 开工前必须补齐的 3 个空白
+## 0. 当前进度与待办（2026-10-26）
 
-这三项不补齐，文档里所有「A / B / C」都只是代号：
+**代码基线：`main` 的 `525b9e0`。F0 与 F1 三个动作的正式调用路径均已接通；当前处于 Windows IDEA 实机验收及交付准备阶段。** [CI run 40275125811](https://github.com/Keith-hq/taide/actions/runs/40275125811) 的 `build` 与 `compatibility` 均成功；[六项人工验收](e2e/E2E_RESULTS.md)仍全部为 `E2E_NOT_RUN`，不能据此宣称所有功能已通过端到端验收。
+
+| 待办 | 主责与配合 | 完成依据 |
+|:--|:--|:--|
+| 六项 Windows IDEA 验收 | C 牵头，A/B 配合 | 按 [E2E 指南](e2e/E2E_GUIDE.md)记录构建 commit、安装包 SHA-256、实际结果及截图 |
+| 真实课件与双后端复核 | A | 课件页码随机抽检；AGI 有效 Key 下实际调用；真实回答与引用质量复核 |
+| 界面与引导实机验收 | B | 主题、缩放、1366×768、窄面板、首次下载及失败/取消提示、源文件预览 |
+| 英文报告与演示材料 | B 主笔，A/C 提供技术章节 | 统一作业规定的五节结构，补齐成员资料与真实验收证据 |
+| 安装包、提交包与彩排 | C 牵头，全员配合 | 最新代码构建、干净机器安装、20 分钟演示及 Canvas 提交检查 |
+
+模型使用 `all-MiniLM-L6-v2` 的 `model.onnx` 和 `vocab.txt`，可从插件首次引导按需准备。引用当前打开本地文件并提示 1-based 页码，尚无 PDF/PPTX 指定页深链。后文里程碑和职责 DoD 是计划与验收目标，历史实现记录不自动等于本次人工验收结果。
+
+### 待补齐的团队资料与资源
 
 - [ ] **成员姓名与学号** —— 填进下方角色表，以及 README 的 Team 表
-- [ ] **LLM API Key** —— DeepSeek 或同济 AGI 平台，谁去申请、什么时候拿到
-- [ ] **课件来源** —— 课程 PDF/PPTX 放在哪个目录，是否允许提交进仓库（建议：**不入库**，只提交索引脚本）
+- [ ] **验收 API 凭据与额度** —— A 已记录 DeepSeek 实测，Windows 验收仍需各项目保存有效 Key；AGI 实际连接待验证。Key 不写入文档或仓库
+- [ ] **验收课件目录与使用范围** —— A 已记录 9 份讲义，确认全组验收材料与目录；课件不入库，实际使用材料写入验收记录
 
 ---
 
@@ -32,7 +44,7 @@
 
 | 约束 | 数值 | 含义 |
 |:--|:--|:--|
-| **剩余时间** | **13 天**（10-21 → 11-03） | 不是「一个学期做插件」，是「两周做一个能演示的插件」 |
+| **交付窗口** | 10-21 → 11-03；截至 10-26 距截止日约 **8 天** | 当前优先实机验收、问题修复、报告与演示交付 |
 | **功能范围** | F0 四项 + F1 三项 | 七项都要能跑通，不能只做一半 |
 | **评分权重** | 功能 35% · 技术设计 35% · 演示 10% · 代码 10% · 文档 10% | **技术设计分与功能分等重**——架构说不清，功能全做完也拿不到高分 |
 
@@ -66,7 +78,7 @@
 | `src/main/java/edu/cst3492/taide/llm/**` | **A** | LLM 客户端、prompt 模板加载 |
 | `src/main/java/edu/cst3492/taide/model/**` | **B** | 应用级模型准备、固定版本下载与校验；与 A 的问答服务共享模型路径 |
 | `src/main/resources/prompts/**` | **A** | 所有 prompt 文本，版本化 |
-| `src/main/java/edu/cst3492/taide/settings/**` | **A** | `TaideSettings` 持久化配置 |
+| `src/main/java/edu/cst3492/taide/ui/settings/**` | **B** | `TaideUiSettings` / `SettingsSnapshot`、设置界面及凭据；A 的服务消费配置快照与安全存储 |
 | `src/main/java/edu/cst3492/taide/service/**` | **A**（接口） | `TaideService` 及其实现——**全项目唯一的接缝** |
 | `src/main/java/edu/cst3492/taide/ui/**` | **B** | Tool window、聊天面板、引用卡片、设置页 UI |
 | `src/main/java/edu/cst3492/taide/action/AskTaideAction.java` | **B** | F0.4 右键问答 |
@@ -77,7 +89,7 @@
 | `build.gradle.kts` / `gradle.properties` / `.github/**` | **C** | 构建、CI、打包 |
 | `docs/TEAM.md` | 全员 | 各自改自己章节，改完在群里说一声 |
 | `README.md` | **B** | 对外门面 |
-| `docs/REPORT.md` | **B** 主笔 | A、C 供技术章节 |
+| `docs/TAIDE-B-English-Report-V*.docx` | **B** 主笔 | 当前 V1.2.0 为贡献草稿，A、C 提供技术章节，团队整合为最终报告 |
 
 ⚠️ `plugin.xml` 是三人唯一的物理冲突点。**B 是唯一有权提交它的人**，C 的三个 action 由 B 代为注册。这条不遵守，第一天就会冲突。
 
@@ -187,16 +199,16 @@ public interface SmartAction {
 
 落盘位置：`<IDE config>/taide/index/<project-hash>.json`。**不写进项目目录**，避免污染仓库。
 
-### 4.6 B 侧集成约定（2026-10-24）
+### 4.6 B 侧集成约定（2026-10-26）
 
 以下为当前源码的接入状态，补充既有冻结契约，不改变 `TaideService` 方法签名：
 
-1. **聊天与重建使用同一个项目服务实例。** 正式 `plugin.xml` 将 `TaideService` 注册到 `TaideServiceImpl`，将 `KnowledgeBaseController` 注册到 B 的 `ProjectKnowledgeBaseController`。后者通过 `project.getService(TaideService.class)` 委托重建，避免把同一实现按两个接口重复创建。§5.1 A-5 中的两行 XML 是当时的接入请求，当前注册以本节和正式 `plugin.xml` 为准。
+1. **聊天与重建使用同一个项目服务实例。** 正式 `plugin.xml` 将 `TaideService` 注册到 `TaideServiceImpl`，将 `KnowledgeBaseController` 注册到 B 的 `ProjectKnowledgeBaseController`。后者通过 `project.getService(TaideService.class)` 委托重建，避免把同一实现按两个接口重复创建。`TaideServiceImpl` 同时实现 `AutomationRuntimeAccess`，供 C 从已注册服务取得正式运行时，无需新增服务注册。
 2. **设置是不可变快照，凭据另存。** A 通过 `TaideUiSettings.snapshot()` 取得 Provider、base URL、模型、课件目录和演示开关；`readApiKey(snapshot)` 必须在后台线程执行。`revision()` 在设置或凭据更新后递增，问答服务据此使资源缓存失效。API Key 按项目、Provider 与端点存入 PasswordSafe，不写入 XML；旧版凭据升级后需重新输入，切换端点不得沿用其他端点的 Key。
 3. **重建需先保存目录。** 设置页点 Apply 后才能重建该目录。重建在后台显示进度并支持取消，发布新索引前检查取消状态；已经完成的原子发布不会因稍后取消设置而回滚。重建成功使聊天索引缓存失效；ONNX 会话按资源使用状态及项目生命周期释放。
 4. **演示来源与课件目录随消息保存。** 每条消息固定发送时的演示/真实标记和课件目录；同一会话中切换设置，不改变已有消息的标记，也不会把旧引用指向新目录中的同名课件。示例引用隐藏虚构分数，点击时只显示演示说明；真实引用通过原课件目录内的路径边界检查后打开文件，并提示用户手动定位页码，尚无 PDF/PPTX 页码深链。
-5. **C 的动作注册与默认引用导航已接入，模型和检索由 A/C 接入。** 正式 `plugin.xml` 包含 `META-INF/taide-automation.xml`，F1 入口不再是注释占位。`CourseSourceNavigator` 是独立的项目级服务，默认来源打开无需先打开聊天工具窗或调用 `bind`。`AutomationServices.bind(llmClient, retriever, citationOpener)` 可覆盖为自定义服务与导航回调；聊天 `TaideService` 注册不会自动暴露其内部模型和检索器。详见 [AUTOMATION 服务接入](AUTOMATION.md#服务接入)。
-6. **模型准备使用应用级服务。** `ModelSetupService` 管理所有项目共享的本地模型路径、准备状态与 revision；A 的问答和重建使用同一路径，目录变化后失效旧资源。用户点击后才下载官方固定版本的 MiniLM 模型与词表（约 90 MB，Apache 2.0），按固定大小和 SHA-256 校验，后台准备成功后保存在 `<IDE config>/taide/model/`。已校验缓存可离线复用，失败或取消不把半成品视为可用模型；关闭设置页只移除 UI 监听，不取消应用级下载。
+5. **C 的动作、正式模型/检索与默认来源导航均已接入。** 正式 `plugin.xml` 包含 `META-INF/taide-automation.xml`。F1.1/F1.2 通过 `AutomationServices.withModel` 进入 `AutomationRuntimeAccess`，使用独立的模型客户端缓存，共享聊天的连接配置与凭据机制，不要求课件索引或加载 ONNX；F1.3 通过 `withModelAndRetriever` 在资源租约内复用聊天核心的模型、检索器和索引。`CourseSourceNavigator` 是独立项目级服务，无需先打开聊天工具窗；`bind` 保留给测试或定制，正式使用无需手动绑定。F1 调用真实 API，不受聊天演示开关控制。详见 [AUTOMATION 服务接入](AUTOMATION.md#服务接入)。
+6. **模型准备使用应用级服务。** `ModelSetupService` 管理所有项目共享的本地模型路径、准备状态与 revision；A 的问答和重建使用同一路径，目录变化后失效旧资源。用户点击后才下载官方固定版本的 `all-MiniLM-L6-v2` 模型 `model.onnx` 与词表 `vocab.txt`（约 90 MB，Apache 2.0），按固定大小和 SHA-256 校验，后台准备成功后保存在 `<IDE config>/taide/model/`。已校验缓存可离线复用，失败或取消不把半成品视为可用模型；关闭设置页只移除 UI 监听，不取消应用级下载。
 7. **首次使用按三步完成，模式切换必须显式。** 工具窗展示“模型 → API/课件与索引 → 真实问答”准备状态；用户先下载或在设置中选择固定版本的已有目录，填写 API 与课件目录并 Apply，再 Rebuild。模型未就绪时重建禁用。全部准备好后由用户点击“切换真实问答”，或保存关闭 `Use demo service`；下载完成不会自动关闭演示模式。API 状态只检查配置是否已填写，不代表网络连通、Key 有效或余额充足。
 8. **模型目录优先级与网络配置明确。** IDE 设置中显式选择的已有/默认目录优先；未显式选择时依次使用 `taide.model.dir` JVM 属性、`TAIDE_MODEL_DIR` 环境变量和默认目录，保留开发及 CLI 兼容。下载遵循 IDE HTTP Proxy，失败提示入口为 `Settings → Appearance & Behavior → System Settings → HTTP Proxy`，不猜测用户代理端口。普通用户不需要运行下载命令或配置环境变量。
 9. **审查引用使用请求前保存的导航回调。** `CourseReviewAction` 在后台生成前调用 `AutomationServices.captureSourceOpener()`：默认保存当前课件目录，存在自定义绑定时保存该回调对象，结果对话框持有这份回调。后续修改设置或重新绑定不会替换旧审查的回调；自定义回调自身负责保存所需的目录上下文。点击来源时传入原始 `RetrievedChunk`，默认导航在后台执行目录边界、重名及 PDF/PPTX 类型检查，在 EDT 打开文件并提示手动定位 1-based 页码，尚无页内深链。未配置目录或文件无效时给出可读提示；项目释放后停止打开和提示。
@@ -209,7 +221,7 @@ public interface SmartAction {
 
 **定位**：整条链路的发动机。A 的进度决定 B 能否从假数据切到真数据，也决定 C 的三个动作能不能拿到检索能力。
 
-**负责模块**：`rag/`、`llm/`、`settings/`、`service/`、`prompts/`
+**负责模块**：`rag/`、`llm/`、`service/`、`prompts/`；连接配置与凭据由 B 的 `ui/settings/` 提供，A 负责消费。
 
 **交付物与验收标准（DoD）**
 
@@ -221,7 +233,7 @@ public interface SmartAction {
 | A-4 | `LlmClient` 双后端 | DeepSeek + AGI 均可切换；超时 30s、失败重试 2 次；断网时抛 `TaideException` 而非崩溃 | 10-27 |
 | A-5 | `TaideService` 实现 | 端到端问答返回带 `Citation` 的 `TaAnswer`；无相关内容时 `grounded=false` 且 `citations` 为空 | 10-26 |
 | A-6 | Prompt 工程 | 系统 prompt 强制「只依据给定片段作答，逐条标注 [文档·页码]」；准备 3 组反例测试（诱导编造） | 10-28 |
-| A-7 | `FakeTaideService` | 10-22 前交付给 B，否则 B 空转 | **10-22** |
+| A-7 | 演示问答服务 | 原计划为 `FakeTaideService`，现由 B 的 `DemoTaideService` 覆盖，明确标注固定示例 | **10-22** |
 
 **对外承诺**：10-22 交出接口空实现 + Fake；10-26 交出可用真实现。
 **依赖**：B 提供 `CodeContext` 的填充逻辑（A 只消费不实现）；C 提供 API Key 的可用性验证。
@@ -234,7 +246,9 @@ public interface SmartAction {
 
 **风险**：embedding 模型体积（ONNX MiniLM ≈ 90MB）会让插件包变大。预案：模型按需下载 + 校验和；当前由 B 的应用级模型准备服务在用户点击后执行，见 §4.6。
 
-#### A 实现进度记录（2026-10-24）
+#### A 实现进度记录（2026-10-24 至 10-25；10-26 复核）
+
+以下实测数字沿用 A 的历史记录，本轮文档校正未重新执行。A 的核心实现与共享运行时已交付；AGI 有效 Key 下的实际调用、随机 10 块页码人工复核和 Windows IDEA 完整链路仍待验收。
 
 - A-1 首版代码已提交工作区（分支 `feat/a-rag-index`）：`rag/ingest/`（`PdfIngestor` 逐页解析、`PptxIngestor` 逐片解析含备注、`CourseMaterial`）、`rag/chunk/SlideAwareChunker`（512/64、绝不跨页、id=`文档#页码#序号`）、`rag/Chunk`、`IngestMain` 验收 CLI（`./gradlew ingestMaterials --args="<课件目录>"`），配 3 个 JUnit 测试类（页码 1-based、跨页禁止、硬切分、重叠、空片跳过）。
 - 技术栈取舍：PDF 用 **PDFBox**（Tika 的 PDF 底层引擎）直接逐页提取，保证页码与阅读器一致，避免 XHTML 再解析一层；PPTX 按预案用 **POI XSLF**（不用 Tika 纯文本）。README 技术栈徽章（Tika）请 B 择机更新为「PDFBox/POI（Tika 生态）」。
@@ -244,16 +258,16 @@ public interface SmartAction {
 - **A-1 已收口（2026-10-24）**：真实课件跑通 `ingestMaterials`——9 份讲义共 199 页 → 199 chunks（每页文本稀疏，绝大多数页不足 512 token 即一页一块；TEAM 原估 >800 是按更密语料估的，实际以语料为准）；页码边界已用 pymupdf 逐页交叉验证 6/6 一致；U+FFFD 乱码在摄取层已清理。人工抽 10 块核对页码待全组复核，A-2 嵌入+索引 10-25。
 - **A-2 已收口（2026-10-24，提前一天）**：`rag/embed/`（`BertTokenizer` WordPiece 分词、`OnnxEmbeddingModel` ONNX 本地推理 + 均值池化 + L2 归一化，模型输出为原始隐层故需池化）与 `rag/index/`（`InMemoryVectorIndex` 余弦检索 + §4.5 JSON 落盘原子写入、`IndexBuilder` 内容哈希缓存复用旧向量、`BuildIndexMain` 验收 CLI）。实测：199 块全量构建 **4.0s**（<60s 验收线）、缓存重建 **1.1s**（<3s 验收线，embedded=0/reused=199）；`index.json` 已被独立 Python 脚本读取验证（version/model/dim/384 维全对）；查询「what is constructor injection」top-1 命中 Lec-2 第 6 页 Constructors（0.484），语义正确。真模型测试（BERT 参考 id、向量归一化）需 `TAIDE_MODEL_DIR` + `-PliveModelTests=true`。新依赖 onnxruntime 1.20.0（C 审阅）。模型文件约 90MB 已本地化于 `D:\taide-models\`，当时插件内按需下载方案待 C 打包时定；当前实现见 §4.6。
 - **A-3 已收口（2026-10-24，提前两天）**：`rag/retrieve/` 实现 `EmbeddingRetriever`（候选 24 → 相似度阈值 → MMR λ=0.7 去重 → top-k；返回冻结契约 `RetrievedChunk`）与 `RetrievalEvaluator` 评测框架 + 20 题评测集 `src/test/resources/rag/eval-questions.json`（15 题有答案、5 题课件无答案）。**调参记录（报告素材）**：初值阈值 0.35 下 top-3 命中 15/15（100%）、空判定 4/5（80%，压线；Kotlin 协程题假命中 Lec-5 p31 仅 0.410）；阈值上调至 **0.45** 后 15/15 + 5/5 双 100%，最弱真命中 0.481（RAG 题）与最强假命中 0.410 之间留有余量；MMR λ=0.7 维持 README 初值未动。验收 CLI：`./gradlew evalRetrieval --args="<课件目录> <index.json> <eval.json>"`；live 测试门禁 `RetrievalEvaluatorTest`（top3≥70%、空判定≥80%）已绿。
-- **A-5 已收口（2026-10-24，提前两天）**：`service/` 落地 `TaideServiceCore`（平台无关引擎：检索→组 prompt→LLM→带引用的 `TaAnswer`；无相关内容时 grounded=false 且 citations 为空）与 `TaideServiceImpl`（project service，从 B 的 `TaideUiSettings` 读 provider/baseUrl/model/PasswordSafe API Key，实现 B 的 `KnowledgeBaseController` SPI 供 Rebuild 按钮调用，带进度与取消、原子落盘保留旧索引）。`llm/OpenAiCompatibleLlmClient` 用 JDK HttpClient 实现 OpenAI 兼容 /chat/completions（DeepSeek 与同济 AGI 同一格式，换 baseUrl 即切后端），含 **30s 超时、失败重试 2 次、流式 SSE**——A-4 的核心要求已提前内建，10-27 只剩真实 Key 联调与反例复核。`resources/prompts/qa.md` v1：有依据时必须逐条标 [文档 · 页码]、无依据时输出规定句式「Response is based on general knowledge; no specific course material is referenced.」。运行时文件位置：`<IDE config>/taide/model/`（模型）与 `<IDE config>/taide/index/<project-hash>.json`（索引），不进项目目录。**⚠️ 请 B 在 plugin.xml 注册两行（集成 #1 前置）**：
+- **A-5 已收口（2026-10-24，提前两天）**：`service/` 落地 `TaideServiceCore`（平台无关引擎：检索→组 prompt→LLM→带引用的 `TaAnswer`；无相关内容时 grounded=false 且 citations 为空）与 `TaideServiceImpl`（project service，从 B 的 `TaideUiSettings` 读 provider/baseUrl/model/PasswordSafe API Key，实现 B 的 `KnowledgeBaseController` SPI 供 Rebuild 按钮调用，带进度与取消、原子落盘保留旧索引）。`llm/OpenAiCompatibleLlmClient` 用 JDK HttpClient 实现 OpenAI 兼容 /chat/completions（DeepSeek 与同济 AGI 同一格式，换 baseUrl 即切后端），含 **30s 超时、失败重试 2 次、流式 SSE**——A-4 的核心要求已提前内建，10-27 只剩真实 Key 联调与反例复核。`resources/prompts/qa.md` v1：有依据时必须逐条标 [文档 · 页码]、无依据时输出规定句式「Response is based on general knowledge; no specific course material is referenced.」。运行时文件位置：`<IDE config>/taide/model/`（模型）与 `<IDE config>/taide/index/<project-hash>.json`（索引），不进项目目录。**当前 plugin.xml 的服务注册（B 已完成）**：
   ```xml
   <projectService serviceInterface="edu.cst3492.taide.service.TaideService"
                   serviceImplementation="edu.cst3492.taide.service.TaideServiceImpl"/>
   <projectService serviceInterface="edu.cst3492.taide.ui.integration.KnowledgeBaseController"
-                  serviceImplementation="edu.cst3492.taide.service.TaideServiceImpl"/>
+                  serviceImplementation="edu.cst3492.taide.ui.integration.ProjectKnowledgeBaseController"/>
   ```
-  测试：核心/客户端/流式/错误路径 16 个快速单测 + 真检索端到端 live 测试全绿。
-- **A-4 已收口（2026-10-24，提前三天）**：真实 DeepSeek 联调通过——`complete` 返回 TAIDE_OK、流式产出 token；**真实检索 + 真实 DeepSeek 端到端**：问「What is a chained exception?」返回 grounded 带引用回答（Lec-3.1 p9）、问「CSS Flexbox」返回通用知识模式且含规定句式。超时 30s / 重试 2 次 / 断网抛可读 `TaideException` 均有单测覆盖（`RealLlmLiveTest`、`OpenAiCompatibleLlmClientTest`）。双后端本质：同一 OpenAI 兼容客户端换 baseUrl（DeepSeek 已实测；同济 AGI 平台同格式，待 Key 到位后在设置页填 baseUrl 即切换）。测试密钥来源：`TAIDE_LLM_API_KEY` 环境变量或 `~/.taide-api-key` 文件（不入库，测试自动跳过缺 Key 场景）。
-- **A-6 已收口（2026-10-24，提前四天）**：`prompts/qa.md` v1 通过三组反例实测（`PromptAdversarialLiveTest`，真实 DeepSeek）：① 课件外问题 + 强制要求引用 → 拒绝编造、说出规定句式，且回答中无伪造的「Lec-*.pdf … page N」引用模式（正则断言）；② 假前提「课件说 Java 是动态类型（Lec-1 p10）」→ 纠正为静态类型；③ 索要精确页码 → 回答中出现的页码全部属于检索到的引用集。v1 一次通过无需改版。**A-1~A-7 至此全部收口**（A-7 由 B 的 DemoTaideService 覆盖）。
+  上述为当前正式注册：B 已完成集成，重建接口通过控制器代理同一个问答服务；不再将 `TaideServiceImpl` 按两个接口重复注册。A 当时记录核心/客户端/流式/错误路径 16 个快速单测及真检索端到端 live 测试通过，不能替代 Windows GUI 验收。
+- **A-4 核心实现与 DeepSeek 实测完成（2026-10-24；AGI 实测待完成）**：真实 DeepSeek 联调通过——`complete` 返回 TAIDE_OK、流式产出 token；**真实检索 + 真实 DeepSeek 端到端**：问「What is a chained exception?」返回 grounded 带引用回答（Lec-3.1 p9）、问「CSS Flexbox」返回通用知识模式且含规定句式。超时 30s / 重试 2 次 / 断网抛可读 `TaideException` 均有单测覆盖（`RealLlmLiveTest`、`OpenAiCompatibleLlmClientTest`）。双后端本质：同一 OpenAI 兼容客户端换 baseUrl（DeepSeek 已实测；同济 AGI 平台同格式，待 Key 到位后在设置页填 baseUrl 即切换）。测试密钥来源：`TAIDE_LLM_API_KEY` 环境变量或 `~/.taide-api-key` 文件（不入库，测试自动跳过缺 Key 场景）。
+- **A-6 已收口（2026-10-24，提前四天）**：`prompts/qa.md` v1 通过三组反例实测（`PromptAdversarialLiveTest`，真实 DeepSeek）：① 课件外问题 + 强制要求引用 → 拒绝编造、说出规定句式，且回答中无伪造的「Lec-*.pdf … page N」引用模式（正则断言）；② 假前提「课件说 Java 是动态类型（Lec-1 p10）」→ 纠正为静态类型；③ 索要精确页码 → 回答中出现的页码全部属于检索到的引用集。v1 一次通过无需改版。**A-1~A-7 的核心实现至此已交付**（A-7 由 B 的 DemoTaideService 覆盖）；人工页码抽检、AGI 实际连接与 Windows IDEA 验收仍按 §0 跟进。
 - **A-C 共享运行时已交付（2026-10-25，响应 [Issue #10](https://github.com/Keith-hq/taide/issues/10)）**：`service/AutomationRuntimeAccess` 接口落地——`withModel`（仅模型，**不要求索引、不加载 ONNX**，供 F1.1/F1.2）与 `withModelAndRetriever`（复用 F0 的 `ServiceResourceCache` 租约与同一索引，供 F1.3）。`TaideServiceImpl` 实现该接口，C 经已注册的 `TaideService` 转型消费，**无需新增 plugin.xml 注册**。验收实测：注册服务即 `AutomationRuntimeAccess`（平台测试）；无 Key / 无索引 / 项目关闭均抛可读 `TaideException`；真实 Key 下 `withModel` 无索引可用（TAIDE_OK 往返）、`withModelAndRetriever` 检索命中 Lec-3.1 p9；租约成败均释放（B 的缓存生命周期测试已覆盖）。取消传播：回调内异常原样抛出，租约由 try-with-resources 必释。平台测试需注意测试线程在 EDT，服务调用走 worker 线程（测试内 `callOffEdt` 辅助）。
 
 ---
@@ -289,19 +303,20 @@ public interface SmartAction {
 
 **风险**：纯 Swing 截图不能替代真实 IDE 的主题、缩放与停靠布局验收；须另验 1366×768、窄停靠窗、设置页和本机文件预览能力。
 
-#### B 实现进度记录（2026-10-24）
+#### B 实现进度记录（2026-10-24 至 10-26）
 
 - 已覆盖工具窗、流式聊天、停止/重试/新会话、回答与代码复制、真实/示例引用、右键上下文、连接设置、安全凭据及可取消重建。界面由实际原生 Swing 组件实现。
 - 拉取最新 main 后已接入 A 的项目级问答服务；重建通过 B 的控制器代理同一实例。修复设置变更后资源缓存失效、ONNX 会话释放及取消任务在索引发布前的检查；服务资源使用租约，避免正在回答时被重建直接关闭。
 - 凭据从只按 Provider 区分改为项目、Provider 与 API 端点隔离，旧 Key 需重新输入。设置页对可读目录、端点、Key 删除及取消状态提供明确反馈；错误不会直接回显服务端异常正文。
 - 消息保存发送时的 demo 标记与课件目录，切换模式或目录不污染历史引用；流式更新在 EDT 批量渲染，取消/关闭后忽略迟到回调。选区提取补齐 Java PSI 文档提交、行号与编辑器生命周期边界，并增加平台回归测试。
-- C 的三个 F1 动作已通过共享 XML 片段注册；B 的默认引用导航已接入，并在审查请求前固定课件目录或自定义回调。真实模型和检索器仍需 A/C 接入，不能将 A 的聊天联调结果直接计作 F1 端到端验收。
+- C 的三个 F1 动作已通过共享 XML 片段注册；B 的默认引用导航已接入，并在审查请求前固定课件目录或自定义回调。A 的共享运行时和 C 的消费接入均已合入 `main`，无需再补模型/检索绑定；F1 的真实界面操作仍按六项验收台账单独验证。
+- 以下 2026-10-24 的测试数量、截图数量和兼容提示保留为历史证据，不代表 `525b9e0` 的最新测试统计。本轮核实该主分支的 CI `build` / `compatibility` 成功，未执行新的 GUI 验收。
 - 自动化引用导航补充验收（2026-10-24，Windows）：新增 12 项平台测试，完整套件 **182 项：180 通过、2 因符号链接权限跳过**。覆盖默认回调、目录和绑定快照、本地文件/VFS、路径拒绝、EDT 与模态回调；`buildPlugin`、`verifyPluginStructure`、`verifyPlugin` 均通过，兼容结论 `Compatible`，保留原有 6 处实验 API 提示。真实课件预览及完整 F1 链路仍需 IDE 人工验收。
 - 本次模型准备与引导验收（2026-10-24）：**97 项纯 JDK 行为检查通过**，生成 14 张原生聊天截图及 2 张设置页截图；目标 IDE 2024.2.4 的 Gradle 套件共 **170 项测试：168 通过、2 跳过**，跳过项均为 Windows 本机缺少符号链接创建权限的夹具。`buildPlugin`、`verifyPluginStructure` 与 `verifyPlugin` 均通过，兼容检查保留 6 处线程断言的实验性 API 提示。另用真实约 90 MB 模型验证了完整安装、SHA-256 校验、缓存复用及显式目录 ONNX 推理。安装器网络回归使用本地 HTTP/mock；本次没有调用真实问答 API，也未把该套件视为 IDE 内真实联网下载和完整课程问答的人工验收。PDF/PPTX 指定页深链仍未实现。 正式入口为根构建 `test` / `buildPlugin` / `verifyPluginStructure` / `verifyPlugin`；B 的纯 JDK 检查由 `tools/verify-b.ps1` 运行。
 - `verifyPlugin` 已完成并对 IC-242.23726.103 报告 Compatible；6 处实验 API 使用均为 `Application.assertIsNonDispatchThread`，不属于二进制不兼容错误。网络获取 documented incompatible changes 失败，因此未启用已知问题过滤。`examples/junit-demo` 的 `build` 通过，但 `test` 为 `NO-SOURCE`，该证据仅表示示例工程可构建。
 - 交付工具的 11 项 Python 检查通过（Python 3.13.5、pypdf 6.21.2、reportlab 4.5.1，依赖按锁版安装）。提交 ZIP 显式保留所有 `gradlew` Wrapper 的 `0755` 执行权限，修复 Windows NTFS 不提供执行位时 Linux 无法直接运行的问题。
-- [B 英文报告贡献草稿 V1.1.0](TAIDE-B-English-Report-V1.1.0.docx)已同步前序集成审查；旧 V1.0.0 保留。草稿仍需对照作业原文统一五节标题、补全 A/C 内容与成员资料后再定稿。
-- 已补充应用级模型准备与首次使用引导：点击下载、真实进度、完整校验、已有目录/默认目录、取消与代理错误提示；模型、API/课件与索引按状态展示，真实问答仍由用户显式启用。本次流程以 README 和 §4.6 为准；英文 Word 草稿保留前序版本，待后续批次统一更新。
+- [B 英文报告贡献草稿 V1.2.0](TAIDE-B-English-Report-V1.2.0.docx)同步模型准备、首次引导、正式 F1 运行时与引用导航边界；旧版保留。草稿仍需对照作业原文统一五节标题、补全 A/C 内容与成员资料、纳入真实验收证据后再定稿。
+- 应用级模型准备与首次使用引导已实现：点击下载、真实进度、完整校验、已有目录/默认目录、取消与代理错误提示；模型、API/课件与索引按状态展示，真实问答仍由用户显式启用。本批次已校正 README、协作与验收文档，并更新 Word 草稿；自用技术文档仅保存在本地，不纳入团队仓库。
 
 ---
 
@@ -326,6 +341,12 @@ public interface SmartAction {
 **对外承诺**：10-22 交出可运行的构建骨架（这是全组的第一块地基，晚一天全线推迟）；10-25 交出 action 类名清单给 B 注册。
 **依赖**：A 的 `LlmClient` 与 `Retriever`（用于 C-4）；B 的 `plugin.xml` 注册。
 
+#### C 集成进度复核（2026-10-26）
+
+- [PR #12](https://github.com/Keith-hq/taide/pull/12) 已合入：JUnit 与提交信息动作改用 `withModel`，课件审查改用 `withModelAndRetriever`；共享运行时的消费接入完成。
+- CI 已包含测试、插件结构验证、安装包、示例构建及二进制兼容性检查；正式发布和 Canvas 打包工具已提供。当前仍为 `0.1.0-SNAPSHOT`，最终版本、提交包与上传须按交付清单完成。
+- Windows [环境说明](e2e/TEST_ENVIRONMENT.md)、[操作指南](e2e/E2E_GUIDE.md)和 [验收台账](e2e/E2E_RESULTS.md)已提供；六个场景尚未执行。生成测试的实际编译/运行、暂存区提交边界、真实课件审查与来源打开、干净机器安装及彩排仍是 C 牵头的收尾工作。
+
 **技术要点**
 - Git 用 **JGit** 还是 IntelliJ 自带 `Git4Idea`？倾向 JGit：不依赖 IDE 内部 API，版本兼容性好。`git diff --cached` 等价于 `DiffCommand.setCached(true)`。
 - 生成测试要判断项目里有没有 JUnit 5 依赖，没有就在提示里说明，别生成一堆红字。
@@ -338,12 +359,12 @@ public interface SmartAction {
 
 ## 6. 里程碑与逐日计划
 
-**集成点只有两个，其余时间各自为战。** 这是刻意的——集成次数越多，返工越多。
+下表保留开工时的逐日计划，用于追溯原定责任和截止日；当前实现进度以 §0、§4.6 和各角色记录为准。代码接入已提前完成，10-30 的重点转为 F0 + F1 实机验收和留证。
 
 | 日期 | 星期 | A | B | C | 集成 |
 |:--|:--:|:--|:--|:--|:--|
 | 10-21 | 三 | 读课件、定 chunk 策略 | 画 UI 线框、定面板结构 | 搭 Gradle 骨架、跑通 hello-world 插件 | — |
-| 10-22 | 四 | **交接口空实现 + Fake**；Tika 解析 | `plugin.xml` 初版；tool window 空壳 | **`runIde` 跑通** | 🔒 接口冻结 |
+| 10-22 | 四 | **交接口空实现 + Fake**；解析原型（最终采用 PDFBox/POI） | `plugin.xml` 初版；tool window 空壳 | **`runIde` 跑通** | 🔒 接口冻结 |
 | 10-23 | 五 | 切块 + 页码校验 | 面板对接 Fake，能收发 | JGit 取 staged diff | — |
 | 10-24 | 六 | A-1 完成（10 份课件） | 消息气泡 + 流式输出 | JUnit 动作骨架（硬编码输出） | — |
 | 10-25 | 日 | 嵌入 + 索引构建 | 引用卡片（假数据） | action 清单交 B | — |
@@ -358,7 +379,7 @@ public interface SmartAction {
 | 11-03 | 二 | 最终修复 | 最终修复 | 打 ZIP、检查清单 | 🚀 **23:00 提交** |
 | 11-04 | 三 | — | — | — | 🎯 13:30 演示 |
 
-**缓冲说明**：表里没有留空白天。真实执行中一定会延期，所以——**10-30 的集成 #2 是硬死线**，届时没做完的功能直接砍掉，剩余时间全部用于打磨已有的部分。
+**验收节点**：10-30 前优先消除阻断 F0 + F1 操作链的缺陷，保留 11-01 后的交付与彩排时间。若某项未达验收要求，应记录失败原因、负责人及修复计划，由团队确认处理范围；不能把未执行或失败的场景写成已完成。
 
 ---
 
@@ -417,13 +438,13 @@ refactor(llm): extract retry logic
 
 必须现场跑通这条链：
 
-> 打开一个 Java 项目 → 选中一段代码 → 右键 Ask TAIDE → 面板弹出 → 提问 → 流式回答 → 底部出现 2 条以上引用卡片 → 点击卡片打开源课件
+> 打开一个 Java 项目并完成真实配置与课件重建 → 选中一段代码 → 右键 Ask TAIDE → 面板弹出 → 提出课件中确有依据的问题 → 流式回答 → 核对返回引用 → 点击卡片打开源课件并手动定位页码
 
-**跑不通的处理**：优先保「有回答」，引用可以是低质量的；但**不能没有引用**——那是 F0 的核心评分点。
+引用数量以真实召回为准，核对文档、1-based 页码和原文是否支持回答，不强制凑足两条。另测课件无相关内容的问题：应显示通用知识提示，`grounded=false` 且引用为空。无命中是正确回退，但不能替代有依据问答场景的验收，更不能为满足数量伪造引用。
 
 ### 8.2 集成 #2（10-30）— F0 + F1 全通
 
-七项功能逐项过一遍，每项 2 分钟，跑不通的当场标记「砍」。
+按 [Windows E2E 指南](e2e/E2E_GUIDE.md)逐项执行六个场景，包括真实问答、JUnit 有/无索引、暂存区提交、课件审查和来源打开。记录每项实际结果与截图；失败项明确负责人并修复重测，未执行项保持 `E2E_NOT_RUN`。模型下载、主题/缩放及窄面板等 B 侧场景另补实机检查记录。
 
 ### 8.3 提交前检查清单（11-03）
 
@@ -485,7 +506,8 @@ refactor(llm): extract retry logic
 | 2026-10-21 | v1.0 | 初版：角色划分、接口契约、里程碑 | — |
 | 2026-10-24 | v1.1 | B 集成审查：更新真实服务注册、单实例重建、端点凭据隔离、取消与消息来源约定，修正 B 当前状态与运行入口 | B |
 | 2026-10-24 | v1.2 | 补充应用级模型准备、固定版本校验与共享目录、首次引导、代理和离线入口；明确 API 检查与显式切换真实问答的边界 | B |
-| 2026-10-24 | v1.3 | 接入自动化审查默认来源导航，明确请求前目录/回调快照、自定义绑定与手动定位页码边界；模型和检索仍待 A/C 接入 | B |
+| 2026-10-24 | v1.3 | 接入自动化审查默认来源导航，明确请求前目录/回调快照、自定义绑定与手动定位页码边界；当时模型和检索仍待 A/C 接入 | B |
+| 2026-10-26 | v1.4 | 校正正式 F1 运行时、共享配置与资源租约、实际模型文件和服务注册；补当前待办与 A/B/C 责任，区分历史测试与未执行实机验收，同步报告草稿 | B |
 
 ---
 

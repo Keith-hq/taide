@@ -34,7 +34,7 @@ $env:JAVA_HOME = 'C:\path\to\jdk-21'
 - `Settings → Tools → TAIDE` 提供本地模型准备、连接、课件目录、演示开关和可取消的重建操作。设置、凭据或模型目录更新使服务缓存失效；API Key 不写入 XML，在 PasswordSafe 中按项目、Provider 和端点隔离保存。
 - 应用级 `ModelSetupService` 管理固定版本模型，所有项目共享同一 IDE 配置目录的文件。下载与校验在后台进行，关闭设置页不取消下载；可通过 IDE 后台任务进度或设置页取消。
 - 演示模式只提供标为示例的固定聊天回答。每条消息保留发送时的来源与课件目录，之后切换模式不会让演示引用变成真实引用，换目录也不会改变旧引用的打开位置。示例卡片不显示虚构相似度，也不打开真实课件。
-- C 的三个动作来自 `META-INF/taide-automation.xml`。它们的真实模型、检索及引用导航仍需通过 `AutomationServices.bind(...)` 接入，详见 [自动化服务约定](../../docs/AUTOMATION.md#服务接入)。开启聊天演示不等于已配置 F1 动作。
+- C 的三个动作来自 `META-INF/taide-automation.xml`，已通过 `AutomationRuntimeAccess` 接入正式项目服务。JUnit 与提交信息生成只需要已保存的模型连接及 Key，不要求课件索引或 ONNX；课件审查复用聊天核心的模型、检索器和索引。默认引用导航无需手动绑定；`bind` 保留给测试或定制，详见 [自动化服务约定](../../docs/AUTOMATION.md#服务接入)。F1 调用真实 API，不受聊天演示开关控制。
 - 真实引用只能打开本地文件并提示页码；当前没有 PDF/PPTX 指定页深链，文件预览能力取决于 IDE。
 
 ## 切换真实问答
@@ -65,8 +65,8 @@ $env:JAVA_HOME = 'C:\path\to\jdk-21'
 .\gradlew.bat test --tests '*CodeContextExtractorPlatformTest'
 ```
 
-本次模型准备与引导验收（2026-10-24）：**97 项纯 JDK 行为检查通过**，生成 14 张原生聊天截图及 2 张设置页截图；目标 IDE 2024.2.4 的 Gradle 套件共 **170 项测试：168 通过、2 跳过**，跳过项均为 Windows 本机缺少符号链接创建权限的夹具。`buildPlugin`、`verifyPluginStructure` 与 `verifyPlugin` 均通过，兼容检查保留 6 处线程断言的实验性 API 提示。另用真实约 90 MB 模型验证了完整安装、SHA-256 校验、缓存复用及显式目录 ONNX 推理。安装器网络回归使用本地 HTTP/mock；本次没有调用真实问答 API，也未把该套件视为 IDE 内真实联网下载和完整课程问答的人工验收。PDF/PPTX 指定页深链仍未实现。 正式入口为根构建；全组状态见 [仓库 README](../../README.md)及 [TEAM §4.6](../../docs/TEAM.md#46-b-侧集成约定2026-10-24)。
+历史模型准备与引导验证（2026-10-24）：97 项纯 JDK 行为检查通过，生成 14 张原生聊天截图及 2 张设置页截图；当时 Gradle 套件为 170 项（168 通过、2 因本机符号链接权限跳过）。另验证过模型安装、校验、缓存及 ONNX 推理，安装器网络回归使用本地 HTTP/mock。这些数字只对应历史版本，不代表最新主分支测试数量，也不替代真实 IDE 联网下载或课程问答验收。正式入口为根构建；当前状态见 [仓库 README](../../README.md)、[TEAM §4.6](../../docs/TEAM.md#46-b-侧集成约定2026-10-26)与 [Windows E2E 台账](../../docs/e2e/E2E_RESULTS.md)。
 
-根构建的 `verifyPlugin` 已完成，IC-242.23726.103 结果为 Compatible；6 处实验 API 使用均为 `Application.assertIsNonDispatchThread`。网络获取 documented incompatible changes 失败，只影响已知问题过滤的启用。`examples/junit-demo` 已可构建，其 `test NO-SOURCE` 不代表执行了示例测试。
+截至 2026-10-26，`main` 的 `525b9e0` 已通过 [正式 CI](https://github.com/Keith-hq/taide/actions/runs/40275125811) 的 `build` 和 `compatibility` 作业。历史兼容性实验 API 提示保留于 TEAM；示例工程可构建不代表生成测试已经实际编译运行。六项 Windows IDEA 验收仍待执行。
 
 交付工具另通过 11 项 Python 检查（Python 3.13.5、锁定的 pypdf 6.21.2 和 reportlab 4.5.1）；提交 ZIP 为所有 `gradlew` Wrapper 显式写入 `0755` 权限，支持从 Windows 打包后在 Linux 直接运行。

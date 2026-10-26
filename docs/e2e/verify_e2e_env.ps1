@@ -70,16 +70,16 @@ if ($foundZip) {
     Write-Host "  Found plugin artifact: $foundZip" -ForegroundColor Gray
     $fileHash = (Get-FileHash -Path $foundZip -Algorithm SHA256).Hash.ToLower()
     Write-Host "  SHA-256: $fileHash" -ForegroundColor Gray
-    Write-Host "  [OK] Plugin package ready for installation in IntelliJ IDEA" -ForegroundColor Green
+    Write-Host "  [NOTICE] File found; verify its source commit and record its hash before installation." -ForegroundColor Yellow
 } else {
     Write-Host "  [NOTICE] No local taide-0.1.0-SNAPSHOT.zip found in standard paths." -ForegroundColor Yellow
-    Write-Host "  Please download the artifact from GitHub Actions Run 40268100782:" -ForegroundColor Yellow
-    Write-Host "  https://github.com/Keith-hq/taide/actions/runs/40268100782" -ForegroundColor Cyan
+    Write-Host "  Download taide-plugin-<commit> from a successful main build matching the source under test:" -ForegroundColor Yellow
+    Write-Host "  https://github.com/Keith-hq/taide/actions/workflows/build.yml?query=branch%3Amain" -ForegroundColor Cyan
 }
 
 Write-Host "`n----------------------------------------------------------" -ForegroundColor Cyan
 if ($passed) {
-    Write-Host "  Environment checks passed. Ready to execute E2E_GUIDE.md." -ForegroundColor Green
+    Write-Host "  Basic checks passed. Follow E2E_GUIDE.md to verify IDEA, the artifact, model, key and course index." -ForegroundColor Green
 } else {
     Write-Host "  Please resolve warnings/failures before running acceptance." -ForegroundColor Yellow
 }
