@@ -90,6 +90,22 @@ intellijPlatform {
     }
 }
 
+tasks.withType<org.jetbrains.intellij.platform.gradle.tasks.VerifyPluginTask>().configureEach {
+    val httpsHost = System.getProperty("https.proxyHost")
+    if (httpsHost != null) {
+        systemProperty("https.proxyHost", httpsHost)
+        systemProperty("https.proxyPort", System.getProperty("https.proxyPort", "443"))
+    }
+    val httpHost = System.getProperty("http.proxyHost")
+    if (httpHost != null) {
+        systemProperty("http.proxyHost", httpHost)
+        systemProperty("http.proxyPort", System.getProperty("http.proxyPort", "80"))
+    }
+    if (gradle.startParameter.isOffline) {
+        offline.set(true)
+    }
+}
+
 val testLauncher = javaToolchains.launcherFor {
     languageVersion = JavaLanguageVersion.of(21)
 }
