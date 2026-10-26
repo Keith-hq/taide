@@ -78,6 +78,23 @@ class CourseReviewGeneratorTest {
     }
 
     @Test
+    void rejectsNullRetrieverResult() {
+        var model = new ModelStub(FINDING);
+        assertThrows(AutomationException.class,
+                () -> new CourseReviewGenerator(model, (q, k) -> null).generate(TestGeneratorTest.CONTEXT));
+        assertEquals(0, model.calls);
+    }
+
+    @Test
+    void rejectsOutOfRangeScore() {
+        var invalid = new RetrievedChunk("doc", "Course.pdf", 1, "text", 1.5);
+        var model = new ModelStub(FINDING);
+        assertThrows(AutomationException.class,
+                () -> new CourseReviewGenerator(model, (q, k) -> List.of(invalid)).generate(TestGeneratorTest.CONTEXT));
+        assertEquals(0, model.calls);
+    }
+
+    @Test
     void rejectsMalformedFindings() {
         for (String response : List.of("{}", "{\"findings\":null}", "{\"findings\":[0]}",
                 FINDING.replace("ERROR", "CRITICAL"), FINDING.replace("\"suggestion\"", "\"other\""))) {

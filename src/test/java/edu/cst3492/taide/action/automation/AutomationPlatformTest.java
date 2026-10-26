@@ -169,6 +169,83 @@ public class AutomationPlatformTest extends BasePlatformTestCase {
         }
     }
 
+    public void testWithModelAndWithModelAndRetrieverUseTestBindingsWhenBound() {
+        var services = new AutomationServices(getProject());
+        var model = new ModelStub("{}");
+        var source = source();
+        services.bind(model, (q, k) -> List.of(source), chunk -> {});
+        String result = services.withModel(m -> {
+            assertSame(model, m);
+            return "ok-model";
+        });
+        assertEquals("ok-model", result);
+
+        String ragResult = services.withModelAndRetriever((m, r) -> {
+            assertSame(model, m);
+            assertEquals(source, r.retrieve("q", 1).getFirst());
+            return "ok-rag";
+        });
+        assertEquals("ok-rag", ragResult);
+    }
+
+    public void testWithModelFailsReadablyWithoutApiKeyWhenUnbound() throws Exception {
+        var services = new AutomationServices(getProject());
+        callOffEdt(() -> {
+            edu.cst3492.taide.ui.settings.TaideUiSettings.getInstance(getProject()).clearApiKey("DeepSeek");
+            return null;
+        });
+        try {
+            callOffEdt(() -> services.withModel(m -> "unused"));
+            fail("Expected AutomationException when no API key is configured");
+        } catch (AutomationException e) {
+            assertTrue(e.getMessage(), e.getMessage().contains("API key"));
+            assertNotNull(e.getCause());
+        }
+    }
+
+    public void testWithModelAndRetrieverFailsReadablyWithoutIndexWhenUnbound() throws Exception {
+        var services = new AutomationServices(getProject());
+        callOffEdt(() -> {
+            edu.cst3492.taide.ui.settings.TaideUiSettings.getInstance(getProject()).saveApiKey("DeepSeek", "test-key".toCharArray());
+            return null;
+        });
+        try {
+            callOffEdt(() -> services.withModelAndRetriever((m, r) -> "unused"));
+            fail("Expected AutomationException when knowledge base is not built");
+        } catch (AutomationException e) {
+            assertTrue(e.getMessage(), e.getMessage().contains("Knowledge base"));
+            assertNotNull(e.getCause());
+        }
+    }
+
+    public void testWithModelPropagatesProcessCanceledException() {
+        var services = new AutomationServices(getProject());
+        var cancelled = new ProcessCanceledException();
+        services.bind(new ModelStub("{}"), (q, k) -> List.of(), chunk -> {});
+        try {
+            services.withModel(m -> {
+                throw cancelled;
+            });
+            fail("ProcessCanceledException must propagate");
+        } catch (ProcessCanceledException e) {
+            assertSame(cancelled, e);
+        }
+    }
+
+    public void testScopedCallsRejectNullOperation() {
+        var services = new AutomationServices(getProject());
+        try {
+            services.withModel(null);
+            fail("Null operation must be rejected");
+        } catch (NullPointerException expected) {
+        }
+        try {
+            services.withModelAndRetriever(null);
+            fail("Null operation must be rejected");
+        } catch (NullPointerException expected) {
+        }
+    }
+
     public void testModelTitlesAreRenderedAsPlainText() {
         var review = new CourseReview(List.of(new CourseReview.Finding(
                 CourseReview.Severity.INFO, "<html><b>Literal model text</b></html>",
@@ -207,6 +284,38 @@ public class AutomationPlatformTest extends BasePlatformTestCase {
         }, value -> callback.set(true));
         pumpUntil(() -> !services.isBusy());
         assertFalse(callback.get());
+    }
+
+    public void testTaskFailureReleasesBusyStateAndSkipsSuccess() throws Exception {
+        var successCalled = new AtomicBoolean();
+        var services = AutomationServices.getInstance(getProject());
+        services.background("TAIDE failing task", () -> {
+            throw new RuntimeException("Simulated model communication failure");
+        }, value -> successCalled.set(true));
+        pumpUntil(() -> !services.isBusy());
+        assertFalse("Failure must not invoke onSuccess callback.", successCalled.get());
+        assertFalse(services.isBusy());
+    }
+
+    public void testCancelledTestPreviewDoesNotWriteFile() throws Exception {
+        Path root = Files.createTempDirectory("taide-cancel-preview-");
+        try {
+            var generated = TestGenerator.validate(TestGeneratorTest.TEST_SOURCE, "demo");
+            var dialog = new AutomationDialogs.TestPreview(getProject(), generated, List.of(root), true);
+            dialog.close(AutomationDialogs.TestPreview.CANCEL_EXIT_CODE);
+            assertFalse("Cancelled preview must not create any test file.",
+                    Files.exists(root.resolve(generated.relativePath())));
+        } finally {
+            var file = LocalFileSystem.getInstance().refreshAndFindFileByNioFile(root);
+            if (file != null) {
+                ApplicationManager.getApplication().runWriteAction(() -> {
+                    try {
+                        file.delete(this);
+                    } catch (java.io.IOException ignored) {
+                    }
+                });
+            }
+        }
     }
 
     public void testCreatedTestCanBeUndone() throws Exception {
@@ -347,5 +456,27 @@ public class AutomationPlatformTest extends BasePlatformTestCase {
             }
         }
         return null;
+    }
+
+    @SuppressWarnings("unchecked")
+    private static <T> T callOffEdt(java.util.concurrent.Callable<T> call) throws Exception {
+        AtomicReference<Object> result = new AtomicReference<>();
+        AtomicReference<Throwable> failure = new AtomicReference<>();
+        Thread worker = new Thread(() -> {
+            try {
+                result.set(call.call());
+            } catch (Throwable error) {
+                failure.set(error);
+            }
+        }, "taide-test-worker");
+        worker.start();
+        worker.join(60_000);
+        if (failure.get() != null) {
+            Throwable error = failure.get();
+            if (error instanceof RuntimeException runtime) throw runtime;
+            if (error instanceof Error fatal) throw fatal;
+            throw (Exception) error;
+        }
+        return (T) result.get();
     }
 }

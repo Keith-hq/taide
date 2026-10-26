@@ -166,4 +166,26 @@ class StagedDiffServiceTest {
         stage("b.txt", "new staged\n");
         assertThrows(AutomationException.class, () -> service.commit(approved, "feat: outdated message"));
     }
+
+    @Test
+    void rejectsCommitWithoutConfiguredUserIdentity() throws Exception {
+        baseline();
+        stage("a.txt", "staged\n");
+        StagedChanges approved = service.read(directory);
+        var config = git.getRepository().getConfig();
+        config.unset("user", null, "name");
+        config.unset("user", null, "email");
+        config.save();
+        assertThrows(AutomationException.class, () -> service.commit(approved, "feat: valid message"));
+    }
+
+    @Test
+    void rejectsCommitWithInvalidMessageWithoutTouchingHead() throws Exception {
+        baseline();
+        stage("a.txt", "staged\n");
+        StagedChanges approved = service.read(directory);
+        var headBefore = git.getRepository().resolve(Constants.HEAD);
+        assertThrows(AutomationException.class, () -> service.commit(approved, "bad non-conventional message"));
+        assertEquals(headBefore, git.getRepository().resolve(Constants.HEAD));
+    }
 }

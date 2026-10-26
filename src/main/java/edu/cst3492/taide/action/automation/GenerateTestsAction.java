@@ -33,7 +33,8 @@ public final class GenerateTestsAction extends JavaSelectionAction {
             }
             String requirement = scenario.requirement();
             services.background("TAIDE: Generate JUnit Tests",
-                    () -> new TestGenerator(services.model()).generate(requirement, context, selection.fullSource()),
+                    () -> services.withModel(
+                            model -> new TestGenerator(model).generate(requirement, context, selection.fullSource())),
                     generated -> DumbService.getInstance(project).runWhenSmart(() -> {
                         if (project.isDisposed()) {
                             return;
