@@ -10,13 +10,18 @@ import com.intellij.openapi.project.Project;
 import edu.cst3492.taide.llm.LlmClient;
 import edu.cst3492.taide.rag.RetrievedChunk;
 import edu.cst3492.taide.rag.Retriever;
+import edu.cst3492.taide.service.AutomationRuntimeAccess;
+import edu.cst3492.taide.service.TaideException;
+import edu.cst3492.taide.service.TaideService;
 import edu.cst3492.taide.ui.integration.CourseSourceNavigator;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.Objects;
 import java.util.concurrent.Callable;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.function.BiFunction;
 import java.util.function.Consumer;
+import java.util.function.Function;
 
 @Service(Service.Level.PROJECT)
 public final class AutomationServices {
@@ -35,6 +40,54 @@ public final class AutomationServices {
     public void bind(LlmClient model, Retriever retriever, Consumer<RetrievedChunk> sourceOpener) {
         bindings = new Bindings(Objects.requireNonNull(model), Objects.requireNonNull(retriever),
                 Objects.requireNonNull(sourceOpener));
+    }
+
+    public <T> T withModel(Function<LlmClient, T> operation) {
+        Objects.requireNonNull(operation, "operation");
+        if (project.isDisposed()) {
+            throw new AutomationException("TAIDE project has been closed.");
+        }
+        LlmClient testModel = bindings.model();
+        if (testModel != null) {
+            return operation.apply(testModel);
+        }
+        AutomationRuntimeAccess runtime = runtimeAccess();
+        try {
+            return runtime.withModel(operation);
+        } catch (ProcessCanceledException error) {
+            throw error;
+        } catch (TaideException error) {
+            throw new AutomationException(error.getMessage(), error);
+        }
+    }
+
+    public <T> T withModelAndRetriever(BiFunction<LlmClient, Retriever, T> operation) {
+        Objects.requireNonNull(operation, "operation");
+        if (project.isDisposed()) {
+            throw new AutomationException("TAIDE project has been closed.");
+        }
+        LlmClient testModel = bindings.model();
+        Retriever testRetriever = bindings.retriever();
+        if (testModel != null && testRetriever != null) {
+            return operation.apply(testModel, testRetriever);
+        }
+        AutomationRuntimeAccess runtime = runtimeAccess();
+        try {
+            return runtime.withModelAndRetriever(operation);
+        } catch (ProcessCanceledException error) {
+            throw error;
+        } catch (TaideException error) {
+            throw new AutomationException(error.getMessage(), error);
+        }
+    }
+
+    private AutomationRuntimeAccess runtimeAccess() {
+        TaideService service = project.getService(TaideService.class);
+        if (service instanceof AutomationRuntimeAccess runtime) {
+            return runtime;
+        }
+        throw new AutomationException(
+                "The TAIDE language-model service is unavailable. Configure the model integration first.");
     }
 
     public LlmClient model() {

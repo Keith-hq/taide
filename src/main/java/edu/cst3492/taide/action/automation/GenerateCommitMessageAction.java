@@ -68,7 +68,7 @@ public final class GenerateCommitMessageAction extends AnAction implements Smart
                 return;
             }
             services.background("TAIDE: Generate Commit Message",
-                    () -> new CommitMessageGenerator(services.model()).generate(staged),
+                    () -> services.withModel(model -> new CommitMessageGenerator(model).generate(staged)),
                     message -> preview(project, services, git, staged, message));
         });
     }

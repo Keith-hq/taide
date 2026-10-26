@@ -20,7 +20,8 @@ public final class CourseReviewAction extends JavaSelectionAction {
         var services = AutomationServices.getInstance(project);
         var openSource = services.captureSourceOpener();
         services.background("TAIDE: Review Code Against Course",
-                () -> new CourseReviewGenerator(services.model(), services.retriever()).generate(context),
+                () -> services.withModelAndRetriever(
+                        (model, retriever) -> new CourseReviewGenerator(model, retriever).generate(context)),
                 review -> new AutomationDialogs.Review(project, review, openSource).show());
     }
 }

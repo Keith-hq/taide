@@ -140,6 +140,18 @@ class PackageSubmissionTests(unittest.TestCase):
         self.team_file.write_text(json.dumps(self.team), encoding="utf-8")
         self.assertEqual("Example Todorov", read_team(self.team_file)["members"][0]["fullName"])
 
+    def test_rejects_missing_gradle_wrapper(self):
+        self.git("rm", "gradlew")
+        self.git("commit", "-m", "chore: remove gradlew")
+        with self.assertRaisesRegex(ValueError, "缺少 Gradle Wrapper"):
+            self.build()
+
+    def test_rejects_missing_java_implementation(self):
+        self.git("rm", "src/main/java/example/Action.java")
+        self.git("commit", "-m", "chore: remove java files")
+        with self.assertRaisesRegex(ValueError, "缺少 Java 实现"):
+            self.build()
+
 
 if __name__ == "__main__":
     unittest.main()
