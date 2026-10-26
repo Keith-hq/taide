@@ -458,8 +458,54 @@ public class AutomationPlatformTest extends BasePlatformTestCase {
         return null;
     }
 
+    public void testCallOffEdtPropagatesExceptions() throws Exception {
+        try {
+            callOffEdt(() -> {
+                throw new IllegalStateException("Simulated runtime error");
+            });
+            fail("IllegalStateException must propagate");
+        } catch (IllegalStateException e) {
+            assertEquals("Simulated runtime error", e.getMessage());
+        }
+
+        try {
+            callOffEdt(() -> {
+                throw new java.io.IOException("Simulated I/O error");
+            });
+            fail("Checked IOException must propagate");
+        } catch (java.io.IOException e) {
+            assertEquals("Simulated I/O error", e.getMessage());
+        }
+    }
+
+    public void testCallOffEdtTimesOutAndInterruptsWorker() {
+        AtomicBoolean interrupted = new AtomicBoolean(false);
+        try {
+            callOffEdt(() -> {
+                try {
+                    Thread.sleep(10_000);
+                } catch (InterruptedException e) {
+                    interrupted.set(true);
+                    Thread.currentThread().interrupt();
+                }
+                return "unexpected-success";
+            }, 50);
+            fail("AssertionError must be thrown on timeout");
+        } catch (AssertionError e) {
+            assertTrue(e.getMessage(), e.getMessage().contains("timed out"));
+        } catch (Exception e) {
+            fail("Unexpected exception: " + e);
+        }
+        assertTrue("Worker thread must receive interrupt signal on timeout", interrupted.get());
+    }
+
     @SuppressWarnings("unchecked")
     private static <T> T callOffEdt(java.util.concurrent.Callable<T> call) throws Exception {
+        return callOffEdt(call, 60_000);
+    }
+
+    @SuppressWarnings("unchecked")
+    static <T> T callOffEdt(java.util.concurrent.Callable<T> call, long timeoutMs) throws Exception {
         AtomicReference<Object> result = new AtomicReference<>();
         AtomicReference<Throwable> failure = new AtomicReference<>();
         Thread worker = new Thread(() -> {
@@ -470,7 +516,12 @@ public class AutomationPlatformTest extends BasePlatformTestCase {
             }
         }, "taide-test-worker");
         worker.start();
-        worker.join(60_000);
+        worker.join(timeoutMs);
+        if (worker.isAlive()) {
+            worker.interrupt();
+            worker.join(1000);
+            throw new AssertionError("Background worker timed out after " + timeoutMs + " ms");
+        }
         if (failure.get() != null) {
             Throwable error = failure.get();
             if (error instanceof RuntimeException runtime) throw runtime;
