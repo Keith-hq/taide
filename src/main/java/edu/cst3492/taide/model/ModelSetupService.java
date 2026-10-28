@@ -73,7 +73,7 @@ public final class ModelSetupService implements PersistentStateComponent<ModelSe
 
     public Status status() {
         Status value = status;
-        return value == null ? new Status(directory(), false, false, false, 0, totalBytes(), "正在检查检索模型…") : value;
+        return value == null ? new Status(directory(), false, false, false, 0, totalBytes(), "Checking retrieval model…") : value;
     }
 
     public AutoCloseable listen(Runnable listener) {
@@ -90,7 +90,7 @@ public final class ModelSetupService implements PersistentStateComponent<ModelSe
             selected = directory();
             Status previous = status;
             boolean ready = previous != null && previous.ready() && selected.equals(previous.directory());
-            publish(new Status(selected, false, ready, false, ready ? totalBytes() : 0, totalBytes(), "正在校验检索模型…"));
+            publish(new Status(selected, false, ready, false, ready ? totalBytes() : 0, totalBytes(), "Validating retrieval model…"));
         }
         ApplicationManager.getApplication().executeOnPooledThread(() -> {
             boolean ready = false;
@@ -100,7 +100,7 @@ public final class ModelSetupService implements PersistentStateComponent<ModelSe
             synchronized (selectionLock) {
                 if (disposed || generation.get() != request) return;
                 publish(new Status(selected, true, ready, false, ready ? totalBytes() : 0, totalBytes(),
-                        ready ? "检索模型已就绪，可离线复用。" : "首次使用需准备检索模型；可下载或选择已有目录。"));
+                        ready ? "Retrieval model ready for offline use." : "First use: download the retrieval model or choose an existing folder."));
             }
         });
     }
@@ -108,15 +108,15 @@ public final class ModelSetupService implements PersistentStateComponent<ModelSe
     /** Validates before publishing the selected directory; call outside EDT. */
     public void useDirectory(Path selected) throws IOException {
         ApplicationManager.getApplication().assertIsNonDispatchThread();
-        if (download.get() != null) throw new IOException("请先取消当前下载。");
+        if (download.get() != null) throw new IOException("Cancel the current download first.");
         Path normalized = selected.toAbsolutePath().normalize();
         if (!installer(null).isReady(normalized, ProgressManager::checkCanceled)) {
-            throw new IOException("目录中需要完整且匹配的 all-MiniLM-L6-v2 model.onnx 和 vocab.txt。请使用下载并配置。");
+            throw new IOException("This folder needs matching all-MiniLM-L6-v2 model.onnx and vocab.txt files. Use Download model to prepare them.");
         }
         synchronized (selectionLock) {
-            if (disposed || download.get() != null) throw new IOException("请先取消当前下载。");
+            if (disposed || download.get() != null) throw new IOException("Cancel the current download first.");
             select(normalized);
-            publish(new Status(normalized, true, true, false, totalBytes(), totalBytes(), "已有模型校验通过，无需重新下载。"));
+            publish(new Status(normalized, true, true, false, totalBytes(), totalBytes(), "Existing model validated. No download needed."));
         }
     }
 
@@ -136,9 +136,9 @@ public final class ModelSetupService implements PersistentStateComponent<ModelSe
             if (disposed || !download.compareAndSet(null, operation)) return;
             previous = status();
             generation.incrementAndGet();
-            publish(new Status(target, false, false, true, 0, totalBytes(), "正在连接模型下载源…"));
+            publish(new Status(target, false, false, true, 0, totalBytes(), "Connecting to model download source…"));
         }
-        new Task.Backgroundable(project, "准备 TAIDE 检索模型", true) {
+        new Task.Backgroundable(project, "Preparing TAIDE retrieval model", true) {
             private boolean installed;
             @Override public void run(@NotNull ProgressIndicator indicator) {
                 operation.indicator = indicator;
@@ -162,14 +162,14 @@ public final class ModelSetupService implements PersistentStateComponent<ModelSe
                 }
             }
             @Override public void onSuccess() { finish(""); }
-            @Override public void onCancel() { finish("下载已取消，可随时重试；原模型仍保留。"); }
+            @Override public void onCancel() { finish("Download canceled. Your existing model is unchanged. You can retry anytime."); }
             @Override public void onThrowable(@NotNull Throwable error) {
                 finish(failureDetail(error));
             }
             private void finish(String failure) {
                 synchronized (selectionLock) {
                     if (!download.compareAndSet(operation, null) || disposed) return;
-                    if (installed) publish(new Status(target, true, true, false, totalBytes(), totalBytes(), "模型已下载并校验，可直接使用。"));
+                    if (installed) publish(new Status(target, true, true, false, totalBytes(), totalBytes(), "Model downloaded, verified and ready to use."));
                     else {
                         boolean retained = previous.ready() && directory().equals(previous.directory());
                         publish(new Status(directory(), true, retained, false, retained ? totalBytes() : 0, totalBytes(), failure));
@@ -253,13 +253,13 @@ public final class ModelSetupService implements PersistentStateComponent<ModelSe
             String message = cause.getMessage();
             if (message == null) continue;
             if (message.contains("verification failed") || message.contains("exceeds its expected size")) {
-                return "模型文件校验失败，未启用下载结果。请重试，或选择完整的已有模型目录。";
+                return "Model verification failed. The downloaded files were not activated. Retry or choose a complete existing model folder.";
             }
             if (message.contains("dedicated directory") || message.contains("contains other files")) {
-                return "默认模型目录包含其他文件，无法替换。请移走无关文件后重试，或使用已有模型目录。";
+                return "The default model folder contains other files. Move them before retrying, or choose an existing model folder.";
             }
         }
-        return "下载未完成。请在 Settings → Appearance & Behavior → System Settings → HTTP Proxy 检查代理后重试，也可使用已有模型目录。";
+        return "Download incomplete. Check Settings → Appearance & Behavior → System Settings → HTTP Proxy, then retry or choose an existing model folder.";
     }
     @Override public void dispose() { disposed = true; cancel(); listeners.clear(); generation.incrementAndGet(); }
     private static final class ModelDownloadException extends RuntimeException {

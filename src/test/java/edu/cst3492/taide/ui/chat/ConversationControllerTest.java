@@ -62,12 +62,12 @@ public final class ConversationControllerTest {
 
             Manual auth = new Manual(); controller.send("认证", CodeContext.empty(), auth); auth.await();
             auth.error.accept(new RuntimeException("Model API error 401: api_key=private-value"));
-            check(controller.snapshot().notice().contains("认证失败") && !controller.snapshot().notice().contains("private-value"),
+            check(controller.snapshot().notice().contains("authentication failed") && !controller.snapshot().notice().contains("private-value"),
                     "authentication failures show a safe actionable message");
             for (String suffix : List.of(": private-detail", ". Check local setup.")) {
                 Manual load = new Manual(); controller.send("载入失败", CodeContext.empty(), load); load.await();
                 load.error.accept(new RuntimeException("TAIDE failed to load its knowledge base or model" + suffix));
-                check(controller.snapshot().notice().contains("重建知识库"), "both model loading error formats provide repair guidance");
+                check(controller.snapshot().notice().contains("rebuild the knowledge base"), "both model loading error formats provide repair guidance");
             }
 
             Manual longStream = new Manual(); controller.send("过长", CodeContext.empty(), longStream); longStream.await();
@@ -78,7 +78,7 @@ public final class ConversationControllerTest {
 
             Manual longFinal = new Manual(); controller.send("过长最终回答", CodeContext.empty(), longFinal); longFinal.await();
             longFinal.done.accept(new TaAnswer("x".repeat(ConversationController.MAX_ANSWER + 1), List.of(), false, "test"));
-            check(controller.snapshot().notice().contains("截断"), "oversized final answer reports truncation");
+            check(controller.snapshot().notice().contains("truncated"), "oversized final answer reports truncation");
 
             Manual demo = new Manual(); controller.send("示例", CodeContext.empty(), demo, true); demo.await();
             demo.done.accept(new TaAnswer("示例回答", fixture, true, "fixture"));

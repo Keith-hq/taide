@@ -18,7 +18,7 @@ public final class ConversationController implements AutoCloseable {
     private Future<?> task;
     private long generation;
     private boolean busy, closed, demo, uiQueued;
-    private String notice = "可以开始提问";
+    private String notice = "Ready to chat";
     private String lastQuestion;
     private CodeContext lastContext;
     private String courseDirectory = "";
@@ -45,7 +45,7 @@ public final class ConversationController implements AutoCloseable {
     public synchronized boolean send(String question, CodeContext context, TaideService service,
                                      boolean demonstration, String materialsDirectory) {
         if (closed || busy || question == null || question.isBlank()) return false;
-        if (question.length() > MAX_QUESTION) { notice = "问题过长，请控制在 16000 个字符内"; emit(); return false; }
+        if (question.length() > MAX_QUESTION) { notice = "Question too long. Use 16,000 characters or fewer."; emit(); return false; }
         Objects.requireNonNull(service);
         demo = demonstration;
         courseDirectory = Objects.requireNonNullElse(materialsDirectory, "");
@@ -53,7 +53,7 @@ public final class ConversationController implements AutoCloseable {
         while (history.size() >= 100) history.subList(0, 2).clear();
         history.add(new Message(true, lastQuestion, lastContext, List.of(), false, "", Status.COMPLETE, demo, courseDirectory));
         history.add(new Message(false, "", CodeContext.empty(), List.of(), false, "", Status.STREAMING, demo, courseDirectory));
-        busy = true; partial.setLength(0); notice = "正在回答 · 可随时停止";
+        busy = true; partial.setLength(0); notice = "Generating · Stop anytime";
         long request = ++generation;
         String prompt = lastQuestion; CodeContext captured = lastContext;
         emit();
@@ -72,9 +72,9 @@ public final class ConversationController implements AutoCloseable {
     private synchronized void token(long request, String token) {
         if (!active(request) || token == null) return;
         int room = MAX_ANSWER - partial.length();
-        if (room <= 0) { stopWithNotice("回答达到显示上限，请缩小问题后重试"); return; }
+        if (room <= 0) { stopWithNotice("Answer reached the display limit. Narrow your question and retry."); return; }
         partial.append(token, 0, Math.min(room, token.length()));
-        if (token.length() > room) { stopWithNotice("回答达到显示上限，请缩小问题后重试"); return; }
+        if (token.length() > room) { stopWithNotice("Answer reached the display limit. Narrow your question and retry."); return; }
         replace(new Message(false, partial.toString(), CodeContext.empty(), List.of(), false, "", Status.STREAMING, demo, courseDirectory));
         emit();
     }
@@ -82,7 +82,7 @@ public final class ConversationController implements AutoCloseable {
     private synchronized void complete(long request, TaAnswer answer) {
         if (!active(request)) return;
         if (answer == null || answer.text() == null || answer.text().isBlank()) {
-            fail(request, new IllegalStateException("模型未返回有效回答")); return;
+            fail(request, new IllegalStateException("The model returned no valid answer")); return;
         }
         List<Citation> citations = answer.grounded() && answer.citations() != null
                 ? answer.citations().stream().filter(Objects::nonNull).limit(30).toList() : List.of();
@@ -90,7 +90,7 @@ public final class ConversationController implements AutoCloseable {
                 CodeContext.empty(), citations, answer.grounded(),
                 Objects.requireNonNullElse(answer.model(), ""), Status.COMPLETE, demo, courseDirectory));
         busy = false; notice = answer.text().length() > MAX_ANSWER
-                ? "回答超出显示上限，已截断；请缩小问题后重试" : "回答完成"; emit();
+                ? "Answer truncated at the display limit. Narrow your question and retry." : "Answer complete"; emit();
     }
 
     private synchronized void fail(long request, Throwable failure) {
@@ -102,20 +102,20 @@ public final class ConversationController implements AutoCloseable {
     /** Providers may include credentials or request contents in any exception, regardless of key format. */
     private static String readableFailure(Throwable failure) {
         String message = failure == null ? "" : Objects.requireNonNullElse(failure.getMessage(), "");
-        if (message.startsWith("No API key configured:")) return "尚未配置 API Key，请打开设置填写模型连接信息";
-        if (message.startsWith("Knowledge base not built yet:")) return "课程知识库尚未建立，请在设置中重建知识库";
+        if (message.startsWith("No API key configured:")) return "API key not configured. Open Settings to configure the model connection.";
+        if (message.startsWith("Knowledge base not built yet:")) return "Knowledge base not built yet. Rebuild the knowledge base in Settings.";
         if (message.startsWith("TAIDE failed to load its knowledge base or model:")
                 || message.startsWith("TAIDE failed to load its knowledge base or model."))
-            return "无法载入课程知识库或嵌入模型，请检查配置并重建知识库";
-        if (message.equals("模型未返回有效回答")) return message;
+            return "Cannot load the knowledge base or embedding model. Check Settings and rebuild the knowledge base.";
+        if (message.equals("The model returned no valid answer")) return message;
         if (message.startsWith("Model API error 401") || message.startsWith("Model API error 403"))
-            return "模型认证失败，请在设置中检查 API Key 与访问权限";
-        if (message.startsWith("Model API error 429")) return "模型服务请求过于频繁，请稍后重试";
-        if (failure instanceof InterruptedException || message.equals("Model call interrupted")) return "请求已中断，可重新发送";
-        return "服务调用失败，请检查网络、模型配置和知识库后重试";
+            return "Model authentication failed. Check your API key and permissions in Settings.";
+        if (message.startsWith("Model API error 429")) return "Model request rate limit reached. Try again later.";
+        if (failure instanceof InterruptedException || message.equals("Model call interrupted")) return "Request interrupted. You can send it again.";
+        return "Request failed. Check your network, model settings and knowledge base, then retry.";
     }
 
-    public synchronized void cancel() { if (busy) stopWithNotice("已停止生成；已接收的内容保留"); }
+    public synchronized void cancel() { if (busy) stopWithNotice("Generation stopped. Received text is kept."); }
     private void stopWithNotice(String text) {
         ++generation; busy = false;
         if (task != null) task.cancel(true);
@@ -127,7 +127,7 @@ public final class ConversationController implements AutoCloseable {
         ++generation; busy = false;
         if (task != null) task.cancel(true);
         history.clear(); partial.setLength(0); lastQuestion = null; lastContext = null; courseDirectory = "";
-        notice = "新对话 · 仅保存在本次 IDE 会话"; emit();
+        notice = "New chat · Stored only for this IDE session"; emit();
     }
     public synchronized boolean retry(TaideService service) {
         return retry(service, service instanceof DemoTaideService);

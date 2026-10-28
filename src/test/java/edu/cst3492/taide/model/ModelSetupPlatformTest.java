@@ -78,13 +78,13 @@ public final class ModelSetupPlatformTest extends BasePlatformTestCase {
             service.loadState(state);
             JComponent form = configurable.createComponent();
             PlatformTestUtil.waitWithEventsDispatching("Local model check completes in settings",
-                    () -> service.status().checked() && button(form, "下载并配置").isEnabled(), 10);
+                    () -> service.status().checked() && button(form, "Download model").isEnabled(), 10);
             assertFalse(service.status().ready());
             assertFalse(service.status().preparing());
-            assertTrue(button(form, "下载并配置").isEnabled());
-            assertTrue(button(form, "使用已有目录…").isEnabled());
+            assertTrue(button(form, "Download model").isEnabled());
+            assertTrue(button(form, "Use existing folder…").isEnabled());
             assertFalse(button(form, "Rebuild Knowledge Base").isEnabled());
-            assertTrue(service.status().detail().contains("首次使用"));
+            assertTrue(service.status().detail().contains("First use"));
             capture(form, 640);
             capture(form, 390);
         } finally { configurable.disposeUIResources(); Files.delete(empty); }

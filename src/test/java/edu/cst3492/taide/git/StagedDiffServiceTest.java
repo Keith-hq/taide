@@ -173,8 +173,9 @@ class StagedDiffServiceTest {
         stage("a.txt", "staged\n");
         StagedChanges approved = service.read(directory);
         var config = git.getRepository().getConfig();
-        config.unset("user", null, "name");
-        config.unset("user", null, "email");
+        // Empty local values override any global identity on the developer machine.
+        config.setString("user", null, "name", "");
+        config.setString("user", null, "email", "");
         config.save();
         assertThrows(AutomationException.class, () -> service.commit(approved, "feat: valid message"));
     }

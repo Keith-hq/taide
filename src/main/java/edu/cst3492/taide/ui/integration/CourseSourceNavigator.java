@@ -3,7 +3,6 @@ package edu.cst3492.taide.ui.integration;
 import com.intellij.openapi.application.ApplicationManager;
 import com.intellij.openapi.application.ModalityState;
 import com.intellij.openapi.components.Service;
-import com.intellij.openapi.fileEditor.FileEditorManager;
 import com.intellij.openapi.progress.ProcessCanceledException;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.ui.Messages;
@@ -52,11 +51,11 @@ public final class CourseSourceNavigator {
         ModalityState modality = ModalityState.defaultModalityState();
         String root = Objects.requireNonNullElse(directory, "");
         if (root.isBlank()) {
-            notice(ui, "请先在 Settings → Tools → TAIDE 中配置课件目录。", "未配置课件目录", modality);
+            notice(ui, "Set your materials folder in Settings → Tools → TAIDE first.", "Materials folder not configured", modality);
             return;
         }
         if (citation == null || citation.slideNumber() < 1) {
-            notice(ui, "引用缺少有效页码，请核对原始回答。", "无法打开引用", modality);
+            notice(ui, "Citation has no valid page number. Check the original answer.", "Cannot open source", modality);
             return;
         }
         ApplicationManager.getApplication().executeOnPooledThread(() -> {
@@ -67,26 +66,24 @@ public final class CourseSourceNavigator {
                 VirtualFile file = LocalFileSystem.getInstance().refreshAndFindFileByNioFile(path);
                 onUi(() -> {
                     if (file == null || !file.isValid()) {
-                        ui.notice("文件已移动或不存在，请检查原课件目录。", "无法打开引用");
+                        ui.notice("File moved or missing. Check the original materials folder.", "Cannot open source");
                         return;
                     }
                     try {
-                        ui.open(file);
-                        ui.notice("已打开 " + file.getName() + "。请手动定位到第 "
-                                + citation.slideNumber() + " 页 / 张。", "引用位置");
+                        ui.open(file, citation.slideNumber());
                     } catch (ProcessCanceledException canceled) {
                         throw canceled;
                     } catch (RuntimeException failure) {
-                        ui.notice("IDE 无法打开该课件，请检查文件关联后重试。", "无法打开引用");
+                        ui.notice("The source preview could not be opened. Check the source file and retry.", "Cannot open source");
                     }
                 }, modality);
             } catch (ProcessCanceledException canceled) {
                 throw canceled;
             } catch (InvalidPathException invalid) {
-                notice(ui, "课件目录无效，请在设置中重新选择。", "无法打开引用", modality);
+                notice(ui, "Invalid materials folder. Choose it again in Settings.", "Cannot open source", modality);
             } catch (IOException | UncheckedIOException | SecurityException failure) {
-                notice(ui, "未能打开引用。请检查原课件目录、文件名和权限；仅支持目录内的 PDF/PPTX，重名文件需提供相对路径。",
-                        "无法打开引用", modality);
+                notice(ui, "Cannot open source. Check the materials folder, file name and permissions. Only PDF/PPTX files inside that folder are supported; duplicate names need relative paths.",
+                        "Cannot open source", modality);
             }
         });
     }
@@ -103,8 +100,8 @@ public final class CourseSourceNavigator {
 
     private Ui ideUi() {
         return new Ui() {
-            @Override public void open(VirtualFile file) {
-                FileEditorManager.getInstance(project).openFile(file, true);
+            @Override public void open(VirtualFile file, int page) {
+                SourcePreviewFileEditorProvider.open(project, file, page);
             }
             @Override public void notice(String message, String title) {
                 Messages.showInfoMessage(project, message, title);
@@ -114,7 +111,7 @@ public final class CourseSourceNavigator {
 
     /** Small UI boundary: the actual resolver and VFS are also exercised in platform tests. */
     interface Ui {
-        void open(VirtualFile file);
+        void open(VirtualFile file, int page);
         void notice(String message, String title);
     }
 }

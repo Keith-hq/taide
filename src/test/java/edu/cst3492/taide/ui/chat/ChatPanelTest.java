@@ -21,9 +21,9 @@ public final class ChatPanelTest {
             await(panel);
             SwingUtilities.invokeAndWait(() -> {
                 panel.refreshMode(); layout(panel);
-                check(labels(panel).stream().anyMatch(s -> s.contains("示例引用")), "demo citations labelled as examples");
+                check(labels(panel).stream().anyMatch(s -> s.contains("Sample citation")), "demo citations labelled as examples");
                 host.demo = false; panel.refreshMode(); layout(panel);
-                check(labels(panel).stream().noneMatch(s -> s.contains("相似度")), "changing mode does not add fake scores to history");
+                check(labels(panel).stream().noneMatch(s -> s.contains("Similarity")), "changing mode does not add fake scores to history");
                 citationButtons(panel).getFirst().doClick();
                 check(host.opened.equals(List.of(true)), "historical demo click retains demonstration source");
 
@@ -37,7 +37,7 @@ public final class ChatPanelTest {
             await(panel);
             SwingUtilities.invokeAndWait(() -> {
                 panel.refreshMode(); layout(panel);
-                check(labels(panel).stream().anyMatch(s -> s.contains("相似度 80%")), "real citations retain retrieval scores");
+                check(labels(panel).stream().anyMatch(s -> s.contains("Similarity 80%")), "real citations retain retrieval scores");
                 host.demo = true; host.directory = "materials-B"; panel.refreshMode(); layout(panel);
                 var citations = citationButtons(panel);
                 citations.getLast().doClick();
@@ -54,25 +54,25 @@ public final class ChatPanelTest {
             ChatPanel panel = new ChatPanel(host);
             try {
                 panel.setSize(390, 900); layout(panel);
-                check(labels(panel).stream().anyMatch(s -> s.contains("检查中")), "first use shows actual pending checks");
-                check(!button(panel, "下载并配置").isEnabled(), "download waits for existing model check");
-                host.setup = new SetupStatus(true, false, false, false, false, "模型未准备");
+                check(labels(panel).stream().anyMatch(s -> s.contains("checking")), "first use shows actual pending checks");
+                check(!button(panel, "Download model").isEnabled(), "download waits for existing model check");
+                host.setup = new SetupStatus(true, false, false, false, false, "Model not ready");
                 panel.refreshMode(); layout(panel);
-                button(panel, "下载并配置").doClick(); button(panel, "打开设置").doClick(); button(panel, "刷新").doClick();
+                button(panel, "Download model").doClick(); button(panel, "Settings").doClick(); button(panel, "Refresh").doClick();
                 check(host.prepares == 1 && host.settings == 1 && host.refreshes == 1, "setup actions invoke host operations");
-                check(!button(panel, "切换真实问答").isEnabled(), "live switch requires all setup steps");
-                host.setup = new SetupStatus(true, false, true, false, true, "正在下载模型 32%");
+                check(!button(panel, "Start live chat").isEnabled(), "live switch requires all setup steps");
+                host.setup = new SetupStatus(true, false, true, false, true, "Downloading model 32%");
                 panel.refreshMode(); layout(panel);
-                check(!button(panel, "正在准备…").isEnabled(), "preparing blocks duplicate model downloads");
-                check(labels(panel).stream().anyMatch(s -> s.equals("正在下载模型 32%")), "download detail preserves true progress");
+                check(!button(panel, "Preparing…").isEnabled(), "preparing blocks duplicate model downloads");
+                check(labels(panel).stream().anyMatch(s -> s.equals("Downloading model 32%")), "download detail preserves true progress");
                 host.setup = new SetupStatus(true, true, true, true, false, "");
-                panel.refreshMode(); layout(panel); button(panel, "切换真实问答").doClick();
+                panel.refreshMode(); layout(panel); button(panel, "Start live chat").doClick();
                 check(host.liveSwitches == 1, "ready demo can explicitly switch to real service");
                 host.demo = false; panel.refreshMode(); layout(panel);
                 check(!guide(panel).isVisible(), "completed live setup releases conversation space");
-                host.setup = new SetupStatus(true, true, true, false, false, "课件发生变化，请重建知识库");
+                host.setup = new SetupStatus(true, true, true, false, false, "Materials have changed. Rebuild the knowledge base.");
                 panel.refreshMode(); layout(panel);
-                check(guide(panel).isVisible() && labels(panel).stream().anyMatch(s -> s.contains("待建索引")), "stale index returns to actionable setup");
+                check(guide(panel).isVisible() && labels(panel).stream().anyMatch(s -> s.contains("rebuild index")), "stale index returns to actionable setup");
             } finally { panel.close(); }
         });
     }
@@ -98,11 +98,13 @@ public final class ChatPanelTest {
         return result;
     }
     private static List<String> labels(Container container) {
-        return descendants(container).stream().filter(JLabel.class::isInstance).map(JLabel.class::cast).map(JLabel::getText).toList();
+        return descendants(container).stream()
+                .filter(component -> component instanceof JLabel || component instanceof JTextArea)
+                .map(component -> component instanceof JLabel label ? label.getText() : ((JTextArea) component).getText()).toList();
     }
     private static List<JButton> citationButtons(Container container) {
         return descendants(container).stream().filter(JButton.class::isInstance).map(JButton.class::cast)
-                .filter(button -> button.getAccessibleContext().getAccessibleName().startsWith("打开 ")).toList();
+                .filter(button -> button.getAccessibleContext().getAccessibleName().startsWith("Open ")).toList();
     }
     private static int messageHeight(Container panel) {
         return descendants(panel).stream().filter(Scrollable.class::isInstance).filter(JPanel.class::isInstance)

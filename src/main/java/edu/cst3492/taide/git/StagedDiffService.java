@@ -41,7 +41,7 @@ public final class StagedDiffService {
 
     public StagedDiffService(int byteLimit) {
         if (byteLimit < 1) {
-            throw new IllegalArgumentException("差异大小上限应为正数。");
+            throw new IllegalArgumentException("The diff size limit must be positive.");
         }
         this.byteLimit = byteLimit;
     }
@@ -145,7 +145,7 @@ public final class StagedDiffService {
             }
             return HexFormat.of().formatHex(digest.digest());
         } catch (NoSuchAlgorithmException error) {
-            throw new IllegalStateException("Java 21 应提供 SHA-256。", error);
+            throw new IllegalStateException("SHA-256 must be available in Java 21.", error);
         }
     }
 

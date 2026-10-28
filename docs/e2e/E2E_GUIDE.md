@@ -199,16 +199,17 @@ Verify that `CourseReviewAction` analyzes code against retrieved course material
 ## Scenario E2E-06: Course Source Navigation
 
 ### Objective
-Verify that the **Open course source** control opens the referenced courseware through IDEA and displays the target slide/page number for manual navigation.
+Verify that **Open course source** opens TAIDE's built-in source preview and renders the cited physical PDF page or PPTX slide.
 
 ### Steps
 1. In the review dialog from E2E-05, select a finding with citations.
 2. Select a citation in the **Sources** list and click the adjacent folder icon with tooltip **Open course source**.
-3. Check which editor/preview IDEA opens through `FileEditorManager`; this depends on installed file support and associations. The plugin does not guarantee launching the Windows default reader.
+3. Verify a read-only editor tab named `<document> (TAIDE)` opens and finishes rendering the cited page or slide.
 4. Verify the file path matches the directory captured when the review started, including any relative subdirectory in the citation.
-5. Verify the **引用位置** message displays the original 1-based slide/page number for manual navigation. PDF/PPTX automatic page deep links are not implemented.
-6. Record a failure if IDEA cannot provide a usable opening of that document in the test environment, with the file type and error. Opening a file is not proof that a requested page was automatically selected.
+5. Compare the displayed Page / Slide number and rendered content with the same physical 1-based page in the original document. Repeat for a different citation in that document; the same tab should update to the new target.
+6. Test Previous / Next, a valid page number with Go, and an out-of-range number. Verify valid navigation renders the right content and invalid navigation gives English feedback without silently selecting a different page.
+7. Record any rendering failure with the file type and error. Use Open original when checking the source in the normal IDE viewer; this fallback does not itself prove automatic page navigation.
 
 ### Expected Evidence
-- The page-position dialog and actual IDEA editor/preview opened with the referenced PDF/PPTX; record the file type and path.
+- The actual rendered target page/slide in the TAIDE editor, its page/slide field and total count; record the file type, resolved path and original citation number.
 - Optional regression: start a review in directory A, change the configured course directory to B after generation, then open the old review's source. It should still resolve in A. Opening the chat tool window beforehand must not be necessary for review navigation.

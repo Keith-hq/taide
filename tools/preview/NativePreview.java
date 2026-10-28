@@ -18,36 +18,38 @@ public final class NativePreview {
         for (int width : new int[]{390, 768, 1440}) render(output, width, 900, "setup");
         render(output, 390, 900, "setup-ready"); render(output, 420, 900, "setup-preparing");
         render(output, 390, 900, "setup-error");
-        System.out.println("NativePreview: fourteen Swing screenshots rendered");
+        render(output, 390, 900, "live-welcome"); render(output, 420, 900, "live-answer");
+        System.out.println("NativePreview: sixteen Swing screenshots rendered");
     }
     static void render(Path out, int width, int height, String state) throws Exception {
         ChatPanel[] holder = new ChatPanel[1];
         SwingUtilities.invokeAndWait(() -> {
             ChatPanel panel = new ChatPanel(new ChatPanel.Host() {
                 public TaideService service() { return new DemoTaideService(); }
-                public boolean demoMode() { return true; }
+                public boolean demoMode() { return !state.startsWith("live"); }
                 public SetupStatus setupStatus() {
                     return switch (state) {
-                        case "setup" -> new SetupStatus(true, false, false, false, false, "首次下载约 90 MB；已有模型可在设置中选择。");
+                        case "setup" -> new SetupStatus(true, false, false, false, false, "About 90 MB to download. Or choose a local model in Settings.");
                         case "setup-ready" -> new SetupStatus(true, true, true, true, false, "");
-                        case "setup-preparing" -> new SetupStatus(true, false, false, false, true, "正在下载检索模型 · 32%");
-                        case "setup-error" -> new SetupStatus(true, false, true, false, false, "下载失败，请检查代理后重试，或选择已有模型。");
+                        case "setup-preparing" -> new SetupStatus(true, false, false, false, true, "Downloading retrieval model · 32%");
+                        case "setup-error" -> new SetupStatus(true, false, true, false, false, "Download failed. Check your proxy and retry, or choose a local model.");
                         default -> null;
                     };
                 }
                 public void settings() {} public void openCitation(Citation c) {} public void copy(String text) {}
             });
             holder[0] = panel; panel.setSize(width, height); layout(panel);
-            if (!state.equals("welcome") && !state.startsWith("setup")) panel.conversation().send("为什么推荐使用构造器注入？", new CodeContext(
+            if (!state.endsWith("welcome") && !state.startsWith("setup")) panel.conversation().send("Why use constructor injection?", new CodeContext(
                     "src/main/java/UserService.java", "JAVA", "private UserRepository repository;", 8, 12, "UserService"),
                     new TaideService() {
                         public TaAnswer ask(String q, CodeContext c) { return null; }
                         public void askStreaming(String q, CodeContext c, Consumer<String> token, Consumer<TaAnswer> done, Consumer<Throwable> error) {
-                            if (state.equals("error")) { error.accept(new IllegalStateException("网络连接失败，请检查配置后重试")); return; }
-                            String answer = state.equals("ungrounded") ? "课件中未找到相关内容。一般来说，构造器注入可以显式声明依赖，并便于编写不依赖 Spring 容器的单元测试。" : DemoTaideService.ANSWER;
-                            done.accept(new TaAnswer(answer, DemoTaideService.CITATIONS, !state.equals("ungrounded"), "UI 演示 · 固定回答"));
+                            if (state.equals("error")) { error.accept(new IllegalStateException("Network connection failed. Check Settings and retry.")); return; }
+                            String answer = state.equals("ungrounded") ? "No matching source found. In general, constructor injection makes dependencies explicit and helps you write unit tests without starting a Spring container." : DemoTaideService.ANSWER;
+                            done.accept(new TaAnswer(answer, DemoTaideService.CITATIONS, !state.equals("ungrounded"),
+                                    state.startsWith("live") ? "Preview fixture" : "Demo · Fixed sample answer"));
                         }
-                    }, true);
+                    }, !state.startsWith("live"));
         });
         long deadline = System.nanoTime() + 3_000_000_000L;
         while (holder[0].conversation().snapshot().busy() && System.nanoTime() < deadline) Thread.sleep(10);

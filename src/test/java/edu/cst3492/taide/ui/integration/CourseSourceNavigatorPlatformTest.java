@@ -51,8 +51,8 @@ public final class CourseSourceNavigatorPlatformTest extends BasePlatformTestCas
         await(ui);
 
         assertEquals(expected.toRealPath(), ui.opened.toNioPath().toRealPath());
-        assertTrue(ui.message.contains("第 7 页 / 张"));
-        assertTrue(ui.message.contains("手动定位"));
+        assertEquals(7, ui.page);
+        assertNull(ui.title);
     }
 
     public void testMissingOriginalSourceCannotRedirectToNewDirectory() throws Exception {
@@ -70,7 +70,7 @@ public final class CourseSourceNavigatorPlatformTest extends BasePlatformTestCas
         await(ui);
 
         assertNull(ui.opened);
-        assertEquals("无法打开引用", ui.title);
+        assertEquals("Cannot open source", ui.title);
     }
 
     public void testNavigationCompletesWhileReviewIsModal() throws Exception {
@@ -83,7 +83,8 @@ public final class CourseSourceNavigatorPlatformTest extends BasePlatformTestCas
             navigator.open(citation("slides.pptx", 11), root.toString(), ui);
             await(ui);
             assertEquals(expected.toRealPath(), ui.opened.toNioPath().toRealPath());
-            assertTrue(ui.message.contains("第 11 页 / 张"));
+            assertEquals(11, ui.page);
+            assertNull(ui.title);
         } finally { LaterInvocator.leaveModal(review); }
     }
 
@@ -103,14 +104,14 @@ public final class CourseSourceNavigatorPlatformTest extends BasePlatformTestCas
         navigator.open(citation("lecture.pdf", 1), "", missing);
         await(missing);
         assertNull(missing.opened);
-        assertEquals("未配置课件目录", missing.title);
+        assertEquals("Materials folder not configured", missing.title);
         assertTrue(missing.message.contains("Settings"));
 
         var invalidPage = new RecordingUi();
         navigator.open(citation("lecture.pdf", 0), directory().toString(), invalidPage);
         await(invalidPage);
         assertNull(invalidPage.opened);
-        assertTrue(invalidPage.message.contains("页码"));
+        assertTrue(invalidPage.message.contains("page number"));
     }
 
     public void testUnsafeMissingAmbiguousAndUnsupportedSourcesAreRejected() throws Exception {
@@ -125,7 +126,7 @@ public final class CourseSourceNavigatorPlatformTest extends BasePlatformTestCas
             navigator.open(citation(name, 1), root.toString(), ui);
             await(ui);
             assertNull(name, ui.opened);
-            assertEquals(name, "无法打开引用", ui.title);
+            assertEquals(name, "Cannot open source", ui.title);
         }
     }
 
@@ -134,22 +135,22 @@ public final class CourseSourceNavigatorPlatformTest extends BasePlatformTestCas
         navigator.open(citation("lecture.pdf", 1), "invalid\0directory", ui);
         await(ui);
         assertNull(ui.opened);
-        assertTrue(ui.message.contains("目录无效"));
+        assertTrue(ui.message.contains("Invalid materials folder"));
     }
 
     public void testEditorFailureHasReadableFeedbackWithoutExceptionDetails() throws Exception {
         Path root = directory();
         source(root, "lecture.pdf");
         RecordingUi ui = new RecordingUi() {
-            @Override public void open(VirtualFile file) {
+            @Override public void open(VirtualFile file, int page) {
                 ApplicationManager.getApplication().assertIsDispatchThread();
                 throw new IllegalStateException("private implementation detail");
             }
         };
         navigator.open(citation("lecture.pdf", 1), root.toString(), ui);
         await(ui);
-        assertEquals("无法打开引用", ui.title);
-        assertTrue(ui.message.contains("文件关联"));
+        assertEquals("Cannot open source", ui.title);
+        assertTrue(ui.message.contains("preview could not be opened"));
         assertFalse(ui.message.contains("private implementation detail"));
     }
 
@@ -162,7 +163,7 @@ public final class CourseSourceNavigatorPlatformTest extends BasePlatformTestCas
     private static Path source(Path root, String relative) throws Exception {
         Path path = root.resolve(relative);
         Files.createDirectories(path.getParent());
-        // File selection is tested here; PDF/PPTX rendering belongs to the user's IDE viewer.
+        // This boundary verifies routing; actual PDF/PPTX rendering has separate integration tests.
         return Files.writeString(path, "navigation fixture");
     }
 
@@ -177,17 +178,19 @@ public final class CourseSourceNavigatorPlatformTest extends BasePlatformTestCas
     }
 
     private static void await(RecordingUi ui) {
-        PlatformTestUtil.waitWithEventsDispatching("Citation navigation completes", () -> ui.title != null, 10);
+        PlatformTestUtil.waitWithEventsDispatching("Citation navigation completes", () -> ui.title != null || ui.opened != null, 10);
     }
 
     private static class RecordingUi implements CourseSourceNavigator.Ui {
         private VirtualFile opened;
         private String message;
         private String title;
+        private int page;
 
-        @Override public void open(VirtualFile file) {
+        @Override public void open(VirtualFile file, int page) {
             ApplicationManager.getApplication().assertIsDispatchThread();
             opened = file;
+            this.page = page;
         }
         @Override public void notice(String message, String title) {
             ApplicationManager.getApplication().assertIsDispatchThread();

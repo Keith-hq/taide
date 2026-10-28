@@ -76,10 +76,10 @@ public final class TaideSettingsConfigurable implements SearchableConfigurable {
         form = new JPanel(new GridBagLayout());
         form.setBorder(JBUI.Borders.empty(20, 20, 24, 20));
         row = 0;
-        addWide(title("TAIDE 首次使用"), 0);
-        addWide(note("1. 准备检索模型 → 2. 配置 API 与课件目录并 Apply → 3. 重建知识库，关闭演示模式后发送新问题。"), 8);
+        addWide(title("Get started with TAIDE"), 0);
+        addWide(note("Prepare the retrieval model, configure your API and materials folder, then click Apply. Rebuild the knowledge base and turn off demo mode to start chatting."), 8);
         addWide(note("Project: " + project.getName() + ". Demo mode uses clearly marked sample answers."), 8);
-        addWide(title("本地检索模型"), 24);
+        addWide(title("Local retrieval model"), 24);
         modelPreparation = new ModelPreparationPanel(project);
         modelPreparation.setStatusChanged(this::updateRebuildAvailability);
         addWide(modelPreparation, 8);
@@ -283,7 +283,7 @@ public final class TaideSettingsConfigurable implements SearchableConfigurable {
         boolean modelReady = modelStatus.ready() && !modelStatus.preparing();
         rebuild.setEnabled(connected && modelReady && folderSelected && directorySaved);
         indexStatus.setText(!connected ? "A indexing service is not connected. Rebuild becomes available after integration."
-                : !modelReady ? "请先在上方准备本地检索模型，再重建知识库。"
+                : !modelReady ? "Prepare the local retrieval model above before rebuilding the knowledge base."
                 : !folderSelected ? "Choose a course directory before rebuilding."
                 : !directorySaved ? "Apply the selected course directory before rebuilding."
                 : "Ready to rebuild. The existing index is kept if the operation is canceled.");
@@ -294,7 +294,7 @@ public final class TaideSettingsConfigurable implements SearchableConfigurable {
         if (backend == null || rebuilding) return;
         ModelSetupService.Status modelStatus = ModelSetupService.getInstance().status();
         if (!modelStatus.ready() || modelStatus.preparing()) {
-            indexStatus.setText("请先在上方准备本地检索模型，再重建知识库。");
+            indexStatus.setText("Prepare the local retrieval model above before rebuilding the knowledge base.");
             return;
         }
         if (baseline == null || !directory.getText().trim().equals(baseline.courseDirectory())) {
@@ -424,7 +424,7 @@ public final class TaideSettingsConfigurable implements SearchableConfigurable {
             String message = cause.getMessage();
             if (message == null) continue;
             if (message.startsWith("Model files not found")) {
-                return "本地检索模型未就绪。请在本页上方点击“下载并配置”，或选择包含 model.onnx 与 vocab.txt 的已有目录，再重建。";
+                return "Local retrieval model not ready. Click Download model above, or choose an existing folder containing model.onnx and vocab.txt, then rebuild.";
             }
             if (message.startsWith("No PDF/PPTX materials found")) {
                 return "No PDF or PPTX text was found. Add readable course materials directly to the selected folder, then rebuild.";
