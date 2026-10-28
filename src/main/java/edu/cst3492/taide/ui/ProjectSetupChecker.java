@@ -25,18 +25,18 @@ final class ProjectSetupChecker {
         boolean validApi = SettingsValidation.validate(live, null).isEmpty();
         boolean apiReady = validApi && hasKey;
         String indexProblem = indexProblem(value.courseDirectory(), indexPath);
-        if (!validApi) return new Result(false, indexProblem == null, "请在设置中填写有效的 API 地址和模型名称。");
-        if (!hasKey) return new Result(false, indexProblem == null, "请在设置中保存当前 API 地址对应的 API Key。");
+        if (!validApi) return new Result(false, indexProblem == null, "Enter a valid API base URL and model ID in Settings.");
+        if (!hasKey) return new Result(false, indexProblem == null, "Save an API key for the current endpoint in Settings.");
         if (indexProblem != null) return new Result(apiReady, false, indexProblem);
-        return new Result(true, true, "API 配置已保存，课件索引可读取；尚未测试 API 联网。");
+        return new Result(true, true, "API settings saved and material index readable. API connection not tested yet.");
     }
 
     private static String indexProblem(String directory, Path indexPath) {
-        if (directory.isBlank()) return "请在设置中选择课件目录，应用后重建知识库。";
+        if (directory.isBlank()) return "Choose a materials folder in Settings, apply it, then rebuild the knowledge base.";
         try {
             Path root = Path.of(directory).toAbsolutePath().normalize();
-            if (!Files.isDirectory(root) || !Files.isReadable(root)) return "课件目录不可读取，请重新选择。";
-            if (!Files.isRegularFile(indexPath) || !Files.isReadable(indexPath)) return "请在设置中点击重建知识库。";
+            if (!Files.isDirectory(root) || !Files.isReadable(root)) return "The materials folder cannot be read. Choose another folder.";
+            if (!Files.isRegularFile(indexPath) || !Files.isReadable(indexPath)) return "Click Rebuild Knowledge Base in Settings.";
             InMemoryVectorIndex.IndexFile index;
             try (Reader reader = Files.newBufferedReader(indexPath, StandardCharsets.UTF_8)) {
                 index = GSON.fromJson(reader, InMemoryVectorIndex.IndexFile.class);
@@ -44,16 +44,16 @@ final class ProjectSetupChecker {
             interrupted();
             if (index == null || index.version != InMemoryVectorIndex.FORMAT_VERSION
                     || !OnnxEmbeddingModel.MODEL_NAME.equals(index.model) || index.dim != OnnxEmbeddingModel.DIMENSION
-                    || index.chunks == null || index.chunks.isEmpty()) return "知识库格式不匹配，请重建知识库。";
+                    || index.chunks == null || index.chunks.isEmpty()) return "Knowledge base format mismatch. Rebuild the knowledge base.";
             for (var entry : index.chunks) {
                 interrupted();
                 if (entry == null || entry.doc == null || entry.doc.isBlank() || entry.slide < 1
                         || entry.text == null || entry.text.isBlank() || entry.vec == null || entry.vec.length != index.dim)
-                    return "知识库内容不完整，请重建知识库。";
-                for (float number : entry.vec) if (!Float.isFinite(number)) return "知识库向量无效，请重建知识库。";
+                    return "Knowledge base incomplete. Rebuild the knowledge base.";
+                for (float number : entry.vec) if (!Float.isFinite(number)) return "Knowledge base vectors are invalid. Rebuild the knowledge base.";
                 Path document = root.resolve(entry.doc).normalize();
                 if (!document.getParent().equals(root) || !Files.isRegularFile(document) || !Files.isReadable(document))
-                    return "课件目录与现有索引不一致，请重建知识库。";
+                    return "The materials folder does not match the current index. Rebuild the knowledge base.";
             }
             var built = Files.getLastModifiedTime(indexPath);
             try (var stream = Files.newDirectoryStream(root)) {
@@ -62,7 +62,7 @@ final class ProjectSetupChecker {
                     String name = file.getFileName().toString();
                     String lower = name.toLowerCase(Locale.ROOT);
                     if (!Files.isRegularFile(file) || !(lower.endsWith(".pdf") || lower.endsWith(".pptx"))) continue;
-                    if (Files.getLastModifiedTime(file).compareTo(built) > 0) return "课件已更新，请重建知识库。";
+                    if (Files.getLastModifiedTime(file).compareTo(built) > 0) return "Materials have changed. Rebuild the knowledge base.";
                 }
             }
             // A readable course file can yield no chunks (for example whitespace-only pages).
@@ -71,7 +71,7 @@ final class ProjectSetupChecker {
         } catch (CancellationException cancellation) {
             throw cancellation;
         } catch (IOException | RuntimeException failure) {
-            return "课件或知识库不可读取，请检查目录后重建知识库。";
+            return "Materials or knowledge base cannot be read. Check the folder and rebuild the knowledge base.";
         }
     }
 

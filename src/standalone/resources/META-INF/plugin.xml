@@ -3,7 +3,7 @@
   <name>TAIDE</name>
   <vendor url="https://github.com/Keith-hq/taide">TAIDE Team</vendor>
   <description><![CDATA[
-    Teaching assistant for CST3492 with scenario-based JUnit test generation,
+    IDE assistant with scenario-based JUnit test generation,
     staged Git commit messages, and course-aware code review.
   ]]></description>
   <depends>com.intellij.modules.platform</depends>

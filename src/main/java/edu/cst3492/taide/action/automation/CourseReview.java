@@ -8,7 +8,7 @@ public record CourseReview(List<Finding> findings, boolean grounded) {
     public CourseReview {
         findings = List.copyOf(findings);
         if (!grounded && findings.stream().anyMatch(finding -> !finding.sources().isEmpty())) {
-            throw new IllegalArgumentException("通用知识审查的引用列表应为空。");
+            throw new IllegalArgumentException("A general knowledge review must have no citations.");
         }
     }
 

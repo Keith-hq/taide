@@ -88,7 +88,7 @@ Enter `PASS` or `FAIL` only after execution, with tester/date and actual evidenc
 ### E2E-06: Course Source Navigation
 - **Status**: `E2E_NOT_RUN`
 - **Action Triggered**: *(Pending: select a Sources entry and click the Open course source folder icon)*
-- **Viewer Opened / Resolved Path**: *(Pending: record actual IDEA editor/preview and resolved PDF/PPTX path; an external default reader is not guaranteed)*
-- **Slide Prompt**: *(Pending: record displayed 1-based page/slide; manual navigation is expected, with no automatic page deep link)*
+- **Viewer Opened / Resolved Path**: *(Pending: record the TAIDE source preview and resolved PDF/PPTX path)*
+- **Target Page / Slide**: *(Pending: compare the rendered content and physical 1-based number with the original citation; confirm a second citation reuses the tab and changes the rendered page)*
 - **Screenshots**:
   - `screenshots/e2e-06-opened-pdf.png`

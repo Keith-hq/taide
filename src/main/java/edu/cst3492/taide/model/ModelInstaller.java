@@ -141,9 +141,9 @@ public final class ModelInstaller {
     }
 
     private Path installLocked(Path target, Progress progress, Cancellation cancellation) throws IOException {
-        progress.update(0, total, "验证本地模型");
+        progress.update(0, total, "Validating local model");
         if (isReady(target, cancellation)) {
-            progress.update(total, total, "模型已就绪");
+            progress.update(total, total, "Model ready");
             return target;
         }
         ensureReplaceable(target);
@@ -164,13 +164,13 @@ public final class ModelInstaller {
                     }
                 }
                 if (!reused) {
-                    progress.update(completed, total, "下载 " + artifact.fileName());
+                    progress.update(completed, total, "Downloading " + artifact.fileName());
                     try (InputStream input = transport.open(artifact.uri())) {
                         transfer(input, stagedFile, artifact, progress, cancellation, completed);
                     }
                 }
                 completed += artifact.size();
-                progress.update(completed, total, "已校验 " + artifact.fileName());
+                progress.update(completed, total, "Verified " + artifact.fileName());
             }
             cancellation.checkCanceled();
             // Check again immediately before moving the old directory, in case an external writer used it.
@@ -202,7 +202,7 @@ public final class ModelInstaller {
                 }
                 output.write(buffer, 0, count);
                 digest.update(buffer, 0, count);
-                if (progress != null) progress.update(completed + received, total, "下载 " + artifact.fileName());
+                if (progress != null) progress.update(completed + received, total, "Downloading " + artifact.fileName());
             }
         }
         if (received != artifact.size()

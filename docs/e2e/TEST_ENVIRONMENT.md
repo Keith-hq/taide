@@ -68,7 +68,7 @@ A local OpenAI-compatible mock endpoint, such as `http://127.0.0.1:8000/v1`, is 
 
 ### 4.3 Course Source Viewer
 
-TAIDE resolves citations within the captured course directory and asks IDEA's `FileEditorManager` to open the PDF/PPTX. The available preview depends on IDEA's file support and associations; opening the Windows default external reader is not guaranteed. A message supplies the original 1-based page/slide for manual navigation. Automatic page deep links are not implemented.
+TAIDE resolves citations within the captured course directory and opens its built-in read-only source preview at the exact physical 1-based PDF page or PPTX slide. No external PDF/PPTX viewer is required for citation navigation. Check the rendered content as well as the page/slide field: a numeric label alone is insufficient evidence. The toolbar supports Previous, Next, Go and zoom; Open original separately uses IDEA's file association. Fonts and complex presentation effects may differ from Office, and slide animations are not played.
 
 ---
 

@@ -6,19 +6,19 @@ import java.util.function.Consumer;
 
 /** Explicitly labelled UI fixture. Never calls a network or reads course materials. */
 public final class DemoTaideService implements TaideService {
-    public static final String ANSWER = "构造器注入让依赖关系在创建对象时就明确。\n\n"
-            + "与字段注入相比，它有三个常见优点：\n"
-            + "• 依赖可以声明为 final，避免对象处于未完成初始化的状态。\n"
-            + "• 单元测试可以直接通过构造器传入替身，无需启动 Spring 容器。\n"
-            + "• 必需依赖一目了然，构造器参数过多也会提醒你拆分职责。\n\n"
-            + "示例：\n```java\npublic UserService(UserRepository repository) {\n"
+    public static final String ANSWER = "Constructor injection makes dependencies explicit when an object is created.\n\n"
+            + "Compared with field injection, it has three common benefits:\n"
+            + "• Dependencies can be final, so objects cannot remain partially initialized.\n"
+            + "• Unit tests can pass test doubles directly without starting a Spring container.\n"
+            + "• Required dependencies are visible; too many parameters suggest splitting responsibilities.\n\n"
+            + "Example:\n```java\npublic UserService(UserRepository repository) {\n"
             + "    this.repository = repository;\n}\n```\n\n"
-            + "只有一个构造器时，Spring 通常不要求显式标注 @Autowired。请以实际课程材料为准。";
+            + "With a single constructor, Spring usually does not require an explicit @Autowired annotation. Check your actual reference materials.";
     public static final List<Citation> CITATIONS = List.of(
-            new Citation("Demo-Spring-Core.pdf", 12, "演示片段：构造器注入将必需依赖作为构造器参数。", .91),
-            new Citation("Demo-Spring-Core.pdf", 17, "演示片段：在单元测试中通过构造器传入测试替身。", .86));
+            new Citation("Demo-Spring-Core.pdf", 12, "Sample excerpt: constructor injection declares required dependencies as constructor parameters.", .91),
+            new Citation("Demo-Spring-Core.pdf", 17, "Sample excerpt: pass test doubles through the constructor in unit tests.", .86));
     @Override public TaAnswer ask(String question, CodeContext context) {
-        return new TaAnswer(ANSWER, CITATIONS, true, "UI 演示 · 固定回答");
+        return new TaAnswer(ANSWER, CITATIONS, true, "Demo · Fixed sample answer");
     }
     @Override public void askStreaming(String question, CodeContext context, Consumer<String> onToken,
                                        Consumer<TaAnswer> onComplete, Consumer<Throwable> onError) {

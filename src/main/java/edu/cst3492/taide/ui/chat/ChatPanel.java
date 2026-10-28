@@ -22,7 +22,6 @@ public final class ChatPanel extends JPanel implements AutoCloseable {
         default void openCitation(Citation citation, boolean demonstration) { openCitation(citation); }
         default void openCitation(Citation citation, boolean demonstration, String materialsDirectory) { openCitation(citation, demonstration); }
         void copy(String text);
-        default String scope() { return "CST3492 · Java 企业级应用开发"; }
         default Color color(String role, Color light) { return light; }
         default Font font() { return new Font("Microsoft YaHei UI", Font.PLAIN, 14); }
         default JScrollPane scrollPane(Component view) { return new JScrollPane(view); }
@@ -37,15 +36,15 @@ public final class ChatPanel extends JPanel implements AutoCloseable {
     private final MessageList messages = new MessageList();
     private final JPanel contextArea = new JPanel(new BorderLayout(8, 0));
     private final JLabel contextLabel = new JLabel();
-    private final JLabel status = new JLabel("可以开始提问");
+    private final JLabel status = new JLabel("Ready to chat");
     private final JLabel mode = new JLabel();
     private final JPanel setup = new JPanel(new BorderLayout(0, 4));
-    private final JLabel setupDetail = new JLabel();
+    private JTextArea setupDetail;
     private final JLabel setupModel = new JLabel();
     private final JLabel setupApi = new JLabel();
     private final JLabel setupStart = new JLabel();
     private final JButton prepareModel = new JButton();
-    private final JButton startLive = new JButton("切换真实问答");
+    private final JButton startLive = new JButton("Start live chat");
     private final JTextArea input = new JTextArea(3, 20) {
         @Override protected void paintComponent(Graphics graphics) {
             super.paintComponent(graphics);
@@ -53,12 +52,12 @@ public final class ChatPanel extends JPanel implements AutoCloseable {
             Graphics2D g = (Graphics2D) graphics.create();
             g.setColor(muted()); g.setFont(getFont());
             Insets insets = getInsets();
-            g.drawString("输入课程问题，或补充这段代码的背景…", insets.left + 1,
+            g.drawString("Ask about your code…", insets.left + 1,
                     insets.top + g.getFontMetrics().getAscent());
             g.dispose();
         }
     };
-    private final JButton send = new JButton("发送") {
+    private final JButton send = new JButton("Send") {
         @Override protected void paintComponent(Graphics graphics) {
             Graphics2D g = (Graphics2D) graphics.create();
             g.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
@@ -72,7 +71,7 @@ public final class ChatPanel extends JPanel implements AutoCloseable {
             super.paintComponent(graphics);
         }
     };
-    private final JButton retry = new JButton("重试");
+    private final JButton retry = new JButton("Retry");
     private final JScrollPane scroll;
     private final Timer updates;
     private ConversationController.Snapshot pending;
@@ -122,9 +121,9 @@ public final class ChatPanel extends JPanel implements AutoCloseable {
         JLabel name = label("TAIDE", 19, Font.BOLD); name.setIcon(new Mark(accent())); name.setIconTextGap(8);
         bar.add(name, BorderLayout.WEST);
         JPanel actions = new JPanel(new FlowLayout(FlowLayout.RIGHT, 4, 0)); actions.setOpaque(false);
-        JButton fresh = secondary("新对话"); fresh.setToolTipText("清空本次会话的消息");
+        JButton fresh = secondary("New chat"); fresh.setToolTipText("Clear messages in this chat");
         fresh.addActionListener(e -> { controller.clear(); clearContext(); input.setText(""); input.requestFocusInWindow(); });
-        JButton settings = secondary("设置"); settings.addActionListener(e -> host.settings());
+        JButton settings = secondary("Settings"); settings.addActionListener(e -> host.settings());
         actions.add(fresh); actions.add(settings); bar.add(actions, BorderLayout.EAST); return bar;
     }
 
@@ -134,19 +133,21 @@ public final class ChatPanel extends JPanel implements AutoCloseable {
         setup.setBorder(new CompoundBorder(new LineBorder(border(), 1, true), new EmptyBorder(8, 10, 8, 10)));
         setup.setName("first-use-guide");
         JPanel heading = new JPanel(new BorderLayout()); heading.setOpaque(false);
-        heading.add(label("准备真实课程问答", 13, Font.BOLD));
-        JButton refresh = secondary("刷新"); refresh.setToolTipText("重新检查模型、API 配置与知识库");
+        heading.add(label("Set up live chat", 13, Font.BOLD));
+        JButton refresh = secondary("Refresh"); refresh.setToolTipText("Check model, API settings and knowledge base again");
         refresh.addActionListener(e -> host.refreshSetup()); heading.add(refresh, BorderLayout.EAST);
         setup.add(heading, BorderLayout.NORTH);
         JPanel steps = new JPanel(new GridLayout(3, 1, 0, 0)); steps.setOpaque(false);
         styleSecondary(prepareModel); prepareModel.addActionListener(e -> host.prepareModel());
-        prepareModel.setToolTipText("下载约 90 MB 的检索模型并配置；已有模型可在设置中选择目录");
+        prepareModel.setToolTipText("Download the retrieval model (about 90 MB), or choose an existing folder in Settings");
         steps.add(setupRow(setupModel, prepareModel));
-        JButton configure = secondary("打开设置"); configure.addActionListener(e -> host.settings());
-        configure.setToolTipText("配置 API、已有模型目录和课件目录，并重建知识库");
+        JButton configure = secondary("Settings"); configure.addActionListener(e -> host.settings());
+        configure.setToolTipText("Configure the API, model and materials folders, then rebuild the knowledge base");
         steps.add(setupRow(setupApi, configure));
         styleSecondary(startLive); startLive.addActionListener(e -> host.useLiveMode());
         steps.add(setupRow(setupStart, startLive)); setup.add(steps, BorderLayout.CENTER);
+        setupDetail = prose("", surface(), false);
+        setupDetail.setFocusable(false);
         setupDetail.setFont(host.font().deriveFont(12f)); setupDetail.setForeground(muted());
         setup.add(setupDetail, BorderLayout.SOUTH);
         return setup;
@@ -165,14 +166,14 @@ public final class ChatPanel extends JPanel implements AutoCloseable {
         boolean visible = state != null && (!state.ready() || host.demoMode());
         setup.setVisible(visible);
         if (!visible) return;
-        setupModel.setText("1 检索模型 · " + (state.preparing() ? "准备中" : !state.checked() ? "检查中" : state.modelReady() ? "已就绪" : "待准备"));
-        prepareModel.setText(state.preparing() ? "正在准备…" : state.modelReady() ? "已准备" : "下载并配置");
+        setupModel.setText("1 Model · " + (state.preparing() ? "preparing" : !state.checked() ? "checking" : state.modelReady() ? "ready" : "needed"));
+        prepareModel.setText(state.preparing() ? "Preparing…" : state.modelReady() ? "Ready" : "Download model");
         prepareModel.setEnabled(state.checked() && !state.modelReady() && !state.preparing());
-        setupApi.setText("2 API 与课件 · " + (!state.checked() ? "检查中" : !state.apiReady() ? "待配置" : state.indexReady() ? "已配置" : "待建索引"));
-        setupStart.setText("3 " + (state.ready() ? "配置完成" : "完成准备后开始"));
+        setupApi.setText("2 API & files · " + (!state.checked() ? "checking" : !state.apiReady() ? "set up" : state.indexReady() ? "ready" : "rebuild index"));
+        setupStart.setText("3 " + (state.ready() ? "Ready to start" : "Finish setup first"));
         startLive.setEnabled(state.ready());
-        String detail = !state.checked() && !state.preparing() ? "正在检查本地配置…" : state.detail().isBlank()
-                ? state.ready() ? "准备完成；演示历史会继续标为示例。" : "首次下载约 90 MB；已有模型可在设置中选择。"
+        String detail = !state.checked() && !state.preparing() ? "Checking local settings…" : state.detail().isBlank()
+                ? state.ready() ? "Setup complete. Demo history keeps its sample labels." : "About 90 MB to download. Or choose a local model in Settings."
                 : state.detail();
         setupDetail.setText(detail); setupDetail.setToolTipText(detail);
         setupModel.setToolTipText(setupModel.getText()); setupApi.setToolTipText(setupApi.getText());
@@ -185,8 +186,8 @@ public final class ChatPanel extends JPanel implements AutoCloseable {
         contextArea.setOpaque(false); contextArea.setBorder(new EmptyBorder(0, 2, 0, 0));
         contextLabel.setFont(host.font().deriveFont(12f)); contextLabel.setForeground(muted());
         contextArea.add(contextLabel, BorderLayout.CENTER);
-        JButton remove = secondary("移除"); remove.addActionListener(e -> clearContext());
-        remove.getAccessibleContext().setAccessibleName("移除选中的代码上下文");
+        JButton remove = secondary("Remove"); remove.addActionListener(e -> clearContext());
+        remove.getAccessibleContext().setAccessibleName("Remove attached code context");
         contextArea.add(remove, BorderLayout.EAST); contextArea.setVisible(false);
         base.add(contextArea, BorderLayout.NORTH);
 
@@ -194,15 +195,15 @@ public final class ChatPanel extends JPanel implements AutoCloseable {
         box.setBorder(new EmptyBorder(12, 12, 8, 12));
         input.setFont(host.font()); input.setForeground(text()); input.setBackground(raised());
         input.setCaretColor(text()); input.setLineWrap(true); input.setWrapStyleWord(true);
-        input.setBorder(null); input.setToolTipText("输入课程问题；Enter 发送，Shift+Enter 换行");
-        input.getAccessibleContext().setAccessibleName("课程问题");
+        input.setBorder(null); input.setToolTipText("Ask a question. Enter to send; Shift+Enter for a new line.");
+        input.getAccessibleContext().setAccessibleName("Question");
         input.setTabSize(4);
         JScrollPane inputScroll = new JScrollPane(input); inputScroll.setBorder(null);
         inputScroll.setHorizontalScrollBarPolicy(ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER);
         inputScroll.setPreferredSize(new Dimension(0, 64));
         box.add(inputScroll, BorderLayout.CENTER);
         JPanel controls = new JPanel(new BorderLayout(8, 0)); controls.setOpaque(false);
-        JLabel hint = label("Enter 发送 · Shift+Enter 换行", 12, Font.PLAIN); hint.setForeground(muted());
+        JLabel hint = label("Enter sends · Shift+Enter newline", 12, Font.PLAIN); hint.setForeground(muted());
         controls.add(hint, BorderLayout.CENTER);
         send.setFont(host.font().deriveFont(Font.BOLD, 13f)); send.setForeground(surface());
         send.setOpaque(false); send.setContentAreaFilled(false); send.setFocusPainted(false);
@@ -233,20 +234,20 @@ public final class ChatPanel extends JPanel implements AutoCloseable {
             if (controller.send(input.getText(), context, host.service(), host.demoMode(), host.courseDirectory())) input.setText("");
         } catch (RuntimeException ex) { showFailure(); }
     }
-    private void showFailure() { status.setText("问答服务无法启动，请检查设置后重试"); status.setToolTipText(status.getText()); }
+    private void showFailure() { status.setText("Chat service unavailable. Check Settings and retry."); status.setToolTipText(status.getText()); }
 
     /** Invoked on EDT after the editor snapshot was captured. */
     public void askAbout(CodeContext selected) {
         if (closed) return;
         context = selected == null ? CodeContext.empty() : selected;
         String file = context.filePath();
-        try { file = Path.of(file).getFileName().toString(); } catch (RuntimeException ignored) { file = "选中代码"; }
+        try { file = Path.of(file).getFileName().toString(); } catch (RuntimeException ignored) { file = "Selected code"; }
         contextLabel.setText(file + " · L" + context.startLine() + "–" + context.endLine());
         contextLabel.setToolTipText(context.filePath() + " · " + context.enclosingClass());
         contextArea.setVisible(!context.selectedText().isBlank());
-        input.setText("请结合课程材料解释这段代码，并指出需要注意的地方。");
+        input.setText("Explain this code using the reference materials and highlight anything I should watch out for.");
         if (!controller.snapshot().busy()) submitOrStop();
-        else { status.setText("已附上选中代码，当前回答结束后可发送"); input.requestFocusInWindow(); }
+        else { status.setText("Code attached. Send after the current answer finishes."); input.requestFocusInWindow(); }
     }
     private void clearContext() { context = CodeContext.empty(); contextArea.setVisible(false); revalidate(); }
     private void flush() { if (pending != null) { var next = pending; pending = null; render(next); } }
@@ -259,13 +260,14 @@ public final class ChatPanel extends JPanel implements AutoCloseable {
                 || bar.getValue() + bar.getVisibleAmount() >= bar.getMaximum() - 60;
         int previousScroll = bar.getValue(); shown = snapshot;
         messages.removeAll();
-        mode.setText(host.demoMode() ? "演示模式 · 固定回答与示例引用" : "课程问答 · 引用请核对原文");
+        mode.setText("Demo mode · Sample answers and citations");
+        mode.setVisible(host.demoMode());
         refreshSetupGuide();
         if (snapshot.messages().isEmpty()) welcome();
         else for (ConversationController.Message message : snapshot.messages()) addRow(message(message));
         messages.add(Box.createVerticalGlue());
         status.setText(snapshot.notice()); status.setToolTipText(snapshot.notice());
-        send.setText(snapshot.busy() ? "停止" : "发送");
+        send.setText(snapshot.busy() ? "Stop" : "Send");
         input.setEditable(!snapshot.busy());
         boolean error = !snapshot.messages().isEmpty() && snapshot.messages().getLast().status() == ConversationController.Status.ERROR;
         retry.setVisible(error); updateSend();
@@ -280,15 +282,13 @@ public final class ChatPanel extends JPanel implements AutoCloseable {
     private void welcome() {
         JPanel content = new JPanel(); content.setOpaque(false); content.setLayout(new BoxLayout(content, BoxLayout.Y_AXIS));
         content.setBorder(new EmptyBorder(18, 0, 24, 0));
-        JLabel title = label("把课程问题，留在代码旁。", 22, Font.BOLD); title.setAlignmentX(LEFT_ALIGNMENT); content.add(title);
+        JLabel title = label("Help beside your code", 22, Font.BOLD); title.setAlignmentX(LEFT_ALIGNMENT); content.add(title);
         content.add(Box.createVerticalStrut(12));
-        content.add(prose("围绕 Java 企业级开发提问，或选中代码，右键使用 Ask TAIDE。", surface(), false));
+        content.add(prose("Ask a question, or select code and choose Ask TAIDE from the editor menu.", surface(), false));
         content.add(Box.createVerticalStrut(24));
-        JLabel scope = label(host.scope(), 12, Font.PLAIN); scope.setForeground(muted()); scope.setAlignmentX(LEFT_ALIGNMENT); content.add(scope);
-        content.add(Box.createVerticalStrut(22));
-        JLabel promptsLabel = label("常见课程问题", 12, Font.BOLD); promptsLabel.setForeground(muted());
+        JLabel promptsLabel = label("Try asking", 12, Font.BOLD); promptsLabel.setForeground(muted());
         promptsLabel.setAlignmentX(LEFT_ALIGNMENT); content.add(promptsLabel);
-        String[] prompts = {"为什么推荐使用构造器注入？", "@Transactional 在什么情况下会失效？", "怎样为 Service 编写独立的单元测试？"};
+        String[] prompts = {"Why use constructor injection?", "When does @Transactional fail?", "How do I test a service in isolation?"};
         for (String prompt : prompts) {
             JButton example = promptButton(prompt);
             example.setAlignmentX(LEFT_ALIGNMENT); example.setMaximumSize(new Dimension(Integer.MAX_VALUE, 42));
@@ -302,11 +302,11 @@ public final class ChatPanel extends JPanel implements AutoCloseable {
         JPanel outer = new JPanel(new BorderLayout()); outer.setOpaque(false); outer.setBorder(new EmptyBorder(0, 0, 22, 0));
         JPanel body = new JPanel(); body.setLayout(new BoxLayout(body, BoxLayout.Y_AXIS)); body.setOpaque(false);
         JPanel meta = new JPanel(new BorderLayout()); meta.setOpaque(false); meta.setBorder(new EmptyBorder(0, 0, 8, 0));
-        JLabel who = label(message.user() ? "你" : "TAIDE", 12, Font.BOLD); who.setForeground(message.user() ? muted() : accent());
+        JLabel who = label(message.user() ? "You" : "TAIDE", 12, Font.BOLD); who.setForeground(message.user() ? muted() : accent());
         meta.add(who, message.user() ? BorderLayout.EAST : BorderLayout.WEST);
         if (!message.user() && !message.text().isEmpty()) {
-            JButton copy = secondary("复制"); copy.addActionListener(e -> { host.copy(message.text()); copy.setText("已复制");
-                Timer timer = new Timer(1600, ignored -> copy.setText("复制")); timer.setRepeats(false); timer.start(); });
+            JButton copy = secondary("Copy"); copy.addActionListener(e -> { host.copy(message.text()); copy.setText("Copied");
+                Timer timer = new Timer(1600, ignored -> copy.setText("Copy")); timer.setRepeats(false); timer.start(); });
             meta.add(copy, BorderLayout.EAST);
         }
         meta.setAlignmentX(message.user() ? RIGHT_ALIGNMENT : LEFT_ALIGNMENT); body.add(meta);
@@ -315,21 +315,22 @@ public final class ChatPanel extends JPanel implements AutoCloseable {
             bubble.add(prose(message.text(), raised(), false)); bubble.setMaximumSize(new Dimension(640, Integer.MAX_VALUE));
             bubble.setAlignmentX(RIGHT_ALIGNMENT); body.add(bubble);
             if (!message.context().selectedText().isBlank()) {
-                JLabel attached = label("已附代码 · L" + message.context().startLine() + "–" + message.context().endLine(), 12, Font.PLAIN);
+                JLabel attached = label("Code attached · L" + message.context().startLine() + "–" + message.context().endLine(), 12, Font.PLAIN);
                 attached.setForeground(muted()); attached.setAlignmentX(RIGHT_ALIGNMENT); body.add(Box.createVerticalStrut(8)); body.add(attached);
             }
         } else {
-            String value = message.text().isEmpty() && message.status() == ConversationController.Status.STREAMING ? "正在查阅课程材料…" : message.text();
+            String value = message.text().isEmpty() && message.status() == ConversationController.Status.STREAMING ? "Looking through reference materials…" : message.text();
             JComponent answer = answer(value); answer.setAlignmentX(LEFT_ALIGNMENT); body.add(answer);
             if (message.status() == ConversationController.Status.COMPLETE) {
                 body.add(Box.createVerticalStrut(14));
                 if (!message.grounded() || message.citations().isEmpty()) {
                     JPanel warning = round(c("warning-bg", 0xFFFBEB), 6); warning.setLayout(new BorderLayout());
                     warning.setBorder(new EmptyBorder(10, 12, 10, 12));
-                    JComponent note = prose("基于通用知识，未引用课件。请结合课程材料核对。", c("warning-bg", 0xFFFBEB), false);
+                    JComponent note = prose("General knowledge answer. No source materials cited; verify against your references.", c("warning-bg", 0xFFFBEB), false);
                     note.setForeground(c("warning", 0x92400E)); warning.add(note); warning.setAlignmentX(LEFT_ALIGNMENT); body.add(warning);
                 } else {
-                    JLabel heading = label("课程依据 · " + message.citations().size() + " 条引用", 12, Font.BOLD);
+                    int count = message.citations().size();
+                    JLabel heading = label("Sources · " + count + (count == 1 ? " citation" : " citations"), 12, Font.BOLD);
                     heading.setForeground(muted()); heading.setAlignmentX(LEFT_ALIGNMENT); body.add(heading);
                     for (Citation citation : message.citations()) { body.add(Box.createVerticalStrut(8)); body.add(citation(citation, message.demo(), message.courseDirectory())); }
                 }
@@ -339,7 +340,7 @@ public final class ChatPanel extends JPanel implements AutoCloseable {
                 }
             }
             if (message.status() == ConversationController.Status.CANCELLED || message.status() == ConversationController.Status.ERROR) {
-                JLabel state = label(message.status() == ConversationController.Status.CANCELLED ? "生成已停止" : "回答中断，可重试", 12, Font.PLAIN);
+                JLabel state = label(message.status() == ConversationController.Status.CANCELLED ? "Generation stopped" : "Answer interrupted. You can retry.", 12, Font.PLAIN);
                 state.setForeground(muted()); state.setAlignmentX(LEFT_ALIGNMENT); body.add(Box.createVerticalStrut(8)); body.add(state);
             }
         }
@@ -350,20 +351,20 @@ public final class ChatPanel extends JPanel implements AutoCloseable {
         JButton card = new JButton(); card.setLayout(new BorderLayout(0, 6)); card.setBackground(surface());
         card.setForeground(text()); card.setOpaque(true); card.setFocusPainted(true);
         card.setBorder(new CompoundBorder(new LineBorder(border(), 1, true), new EmptyBorder(10, 12, 10, 12)));
-        String name = Objects.requireNonNullElse(citation.documentName(), "未命名课件");
+        String name = Objects.requireNonNullElse(citation.documentName(), "Untitled document");
         JPanel line = new JPanel(new BorderLayout(0, 4)); line.setOpaque(false);
         JLabel file = label(name, 12, Font.BOLD); file.setToolTipText(name);
         file.setMinimumSize(new Dimension(0, file.getPreferredSize().height)); line.add(file, BorderLayout.NORTH);
-        String citationDetail = demonstration ? "示例引用" : Double.isFinite(citation.score())
-                ? "相似度 " + Math.round(Math.max(0, Math.min(1, citation.score())) * 100) + "%" : "相似度未知";
-        String location = citation.slideNumber() > 0 ? "第 " + citation.slideNumber() + " 页" : "页码缺失";
+        String citationDetail = demonstration ? "Sample citation" : Double.isFinite(citation.score())
+                ? "Similarity " + Math.round(Math.max(0, Math.min(1, citation.score())) * 100) + "%" : "Similarity unavailable";
+        String location = citation.slideNumber() > 0 ? "Page " + citation.slideNumber() + "" : "Page unavailable";
         JLabel page = label(location + " · " + citationDetail, 12, Font.PLAIN);
         page.setForeground(muted()); line.add(page, BorderLayout.CENTER); card.add(line, BorderLayout.NORTH);
         JComponent snippet = prose(Objects.requireNonNullElse(citation.snippet(), ""), surface(), false); snippet.setForeground(muted());
         // Child text remains selectable; open is also available by keyboard on the whole card.
         card.add(snippet, BorderLayout.CENTER);
-        card.setToolTipText(demonstration ? "演示数据，仅用于预览引用卡片" : "打开课件；相似度是检索分数，不代表答案正确率");
-        card.getAccessibleContext().setAccessibleName("打开 " + name + " 第 " + citation.slideNumber() + " 页");
+        card.setToolTipText(demonstration ? "Sample data for citation preview" : "Open source file. Similarity is a retrieval score, not answer accuracy.");
+        card.getAccessibleContext().setAccessibleName("Open " + name + ", page " + citation.slideNumber() + "");
         card.addActionListener(e -> host.openCitation(citation, demonstration, materialsDirectory));
         file.addMouseListener(new MouseAdapter() { public void mouseClicked(MouseEvent e) { host.openCitation(citation, demonstration, materialsDirectory); } });
         page.addMouseListener(new MouseAdapter() { public void mouseClicked(MouseEvent e) { host.openCitation(citation, demonstration, materialsDirectory); } });

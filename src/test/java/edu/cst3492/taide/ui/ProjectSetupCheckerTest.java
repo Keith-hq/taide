@@ -28,13 +28,13 @@ final class ProjectSetupCheckerTest {
         Path root = materials(); Path index = index(root, OnnxEmbeddingModel.DIMENSION);
         var state = ProjectSetupChecker.check(settings(root), true, index);
         assertTrue(state.apiReady()); assertTrue(state.indexReady());
-        assertTrue(state.detail().contains("尚未测试 API 联网"));
+        assertTrue(state.detail().contains("API connection not tested yet"));
     }
 
     @Test void apiCredentialsAreRequiredEvenWhenDemoPreferencesAreSaved() throws Exception {
         Path root = materials(); Path index = index(root, OnnxEmbeddingModel.DIMENSION);
         var state = ProjectSetupChecker.check(settings(root), false, index);
-        assertFalse(state.apiReady()); assertTrue(state.indexReady()); assertTrue(state.detail().contains("API Key"));
+        assertFalse(state.apiReady()); assertTrue(state.indexReady()); assertTrue(state.detail().contains("API key"));
     }
 
     @Test void invalidProviderEndpointDoesNotDisableIndependentIndexCheck() throws Exception {
@@ -46,7 +46,7 @@ final class ProjectSetupCheckerTest {
 
     @Test void missingCourseDirectoryAndMissingIndexStayIncomplete() throws Exception {
         var empty = ProjectSetupChecker.check(SettingsSnapshot.defaults(), true, temporary.resolve("missing.json"));
-        assertFalse(empty.indexReady()); assertTrue(empty.detail().contains("选择课件"));
+        assertFalse(empty.indexReady()); assertTrue(empty.detail().contains("Choose a materials folder"));
         Path root = materials();
         assertFalse(ProjectSetupChecker.check(settings(root), true, temporary.resolve("missing.json")).indexReady());
     }
@@ -62,7 +62,7 @@ final class ProjectSetupCheckerTest {
         Path root = materials(); Path index = index(root, OnnxEmbeddingModel.DIMENSION);
         Files.setLastModifiedTime(root.resolve("Course.pdf"), FileTime.fromMillis(Files.getLastModifiedTime(index).toMillis() + 2000));
         var state = ProjectSetupChecker.check(settings(root), true, index);
-        assertFalse(state.indexReady()); assertTrue(state.detail().contains("课件已更新"));
+        assertFalse(state.indexReady()); assertTrue(state.detail().contains("Materials have changed"));
     }
 
     @Test void addedAndRemovedDocumentsCannotReuseAnotherCourseIndex() throws Exception {

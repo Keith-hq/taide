@@ -24,10 +24,10 @@ public final class ModelPreparationPanel extends JPanel implements AutoCloseable
     private final JTextArea status = note("");
     private final JTextArea location = note("");
     private final JProgressBar progress = new JProgressBar(0, 1_000);
-    private final JButton download = new JButton("下载并配置");
-    private final JButton local = new JButton("使用已有目录…");
-    private final JButton managed = new JButton("使用默认目录");
-    private final JButton cancel = new JButton("取消下载");
+    private final JButton download = new JButton("Download model");
+    private final JButton local = new JButton("Use existing folder…");
+    private final JButton managed = new JButton("Use default folder");
+    private final JButton cancel = new JButton("Cancel download");
     private AutoCloseable subscription;
     private Runnable statusChanged = () -> {};
     private boolean checkingDirectory;
@@ -38,12 +38,12 @@ public final class ModelPreparationPanel extends JPanel implements AutoCloseable
         this.project = project;
         service = ModelSetupService.getInstance();
         setOpaque(false);
-        addRow(note("用于检索课件；回答由你配置的 API 生成。官方 MiniLM 模型约 90 MB，采用 Apache 2.0 许可。"), 0, 0);
-        addRow(note("仅在点击下载后联网。下载的模型保存在 IDE 配置目录，所有项目共享，下载一次即可。"), 1, 4);
-        status.getAccessibleContext().setAccessibleName("模型准备状态");
+        addRow(note("Retrieves reference materials; your configured API generates the answers. The official MiniLM model is about 90 MB and uses the Apache 2.0 license."), 0, 0);
+        addRow(note("Connects only when you click Download model. The downloaded model is stored in the IDE configuration folder and shared across projects."), 1, 4);
+        status.getAccessibleContext().setAccessibleName("Model setup status");
         addRow(status, 2, 10);
         location.setFocusable(true);
-        location.getAccessibleContext().setAccessibleName("模型保存目录");
+        location.getAccessibleContext().setAccessibleName("Model storage folder");
         addRow(location, 3, 4);
         progress.setStringPainted(true);
         progress.setVisible(false);
@@ -69,17 +69,17 @@ public final class ModelPreparationPanel extends JPanel implements AutoCloseable
     private void chooseExistingDirectory() {
         VirtualFile selected = FileChooser.chooseFile(
                 FileChooserDescriptorFactory.createSingleFolderDescriptor()
-                        .withTitle("选择已有检索模型")
-                        .withDescription("请选择同时包含 model.onnx 和 vocab.txt 的模型目录。"),
+                        .withTitle("Choose an Existing Retrieval Model")
+                        .withDescription("Choose a model folder containing both model.onnx and vocab.txt."),
                 project, null);
         if (selected == null || closed) return;
         Path selectedDirectory = selected.toNioPath();
         checkingDirectory = true;
         render();
-        new Task.Backgroundable(project, "校验 TAIDE 本地模型", false) {
+        new Task.Backgroundable(project, "Validating TAIDE local model", false) {
             @Override public void run(@NotNull ProgressIndicator indicator) {
                 indicator.setIndeterminate(true);
-                indicator.setText("正在校验模型与词表…");
+                indicator.setText("Validating model and vocabulary…");
                 try {
                     service.useDirectory(selectedDirectory);
                 } catch (IOException error) {
@@ -97,7 +97,7 @@ public final class ModelPreparationPanel extends JPanel implements AutoCloseable
                 if (closed) return;
                 checkingDirectory = false;
                 render();
-                status.setText("所选目录未通过校验。请选择包含匹配 model.onnx 与 vocab.txt 的完整目录，并检查文件是否损坏或可读取。");
+                status.setText("Folder validation failed. Choose a complete folder with matching model.onnx and vocab.txt files, and check that both are readable and undamaged.");
             }
         }.queue();
     }
@@ -108,12 +108,12 @@ public final class ModelPreparationPanel extends JPanel implements AutoCloseable
         boolean busy = value.preparing() || checkingDirectory;
         boolean checking = !value.checked() && !value.preparing();
         String detail = value.detail();
-        status.setText(checkingDirectory ? "正在校验所选目录中的模型与词表…"
+        status.setText(checkingDirectory ? "Validating the selected model and vocabulary…"
                 : detail == null || detail.isBlank()
-                ? value.ready() ? "模型已就绪，可继续配置 API 与课件。"
-                : checking ? "正在检查本地模型…" : "尚未准备模型。请下载或选择已有目录。"
+                ? value.ready() ? "Model ready. Configure your API and materials next."
+                : checking ? "Checking local model…" : "Model not ready. Download it or choose an existing folder."
                 : detail);
-        location.setText("模型目录：" + value.directory());
+        location.setText("Model folder: " + value.directory());
         download.setEnabled(!busy && !checking && !value.ready());
         local.setEnabled(!busy && !checking);
         managed.setEnabled(!busy && !checking);
@@ -127,7 +127,7 @@ public final class ModelPreparationPanel extends JPanel implements AutoCloseable
             progress.setString(String.format(Locale.ROOT, "%.1f / %.1f MB",
                     value.downloaded() / 1_000_000.0, value.total() / 1_000_000.0));
         } else {
-            progress.setString(checkingDirectory ? "校验中…" : "准备中…");
+            progress.setString(checkingDirectory ? "Validating…" : "Preparing…");
         }
         revalidate();
         repaint();

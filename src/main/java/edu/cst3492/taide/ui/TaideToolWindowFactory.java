@@ -30,7 +30,7 @@ public final class TaideToolWindowFactory implements ToolWindowFactory, DumbAwar
     @Override public void createToolWindowContent(@NotNull Project project, @NotNull ToolWindow window) {
         IdeHost host = new IdeHost(project);
         ChatPanel panel = new ChatPanel(host);
-        Content content = ContentFactory.getInstance().createContent(panel, "课程问答", false);
+        Content content = ContentFactory.getInstance().createContent(panel, "Chat", false);
         content.setDisposer(() -> { host.close(); panel.close(); });
         window.getContentManager().addContent(content);
         host.bind(panel);
@@ -39,7 +39,7 @@ public final class TaideToolWindowFactory implements ToolWindowFactory, DumbAwar
         if (project.isDisposed()) return;
         ToolWindow window = ToolWindowManager.getInstance(project).getToolWindow(ID);
         if (window == null) {
-            Messages.showInfoMessage(project, "请通过 View → Tool Windows → TAIDE 打开课程助教。", "TAIDE"); return;
+            Messages.showInfoMessage(project, "Open TAIDE from View → Tool Windows → TAIDE.", "TAIDE"); return;
         }
         window.activate(() -> {
             if (project.isDisposed()) return;
@@ -107,7 +107,7 @@ public final class TaideToolWindowFactory implements ToolWindowFactory, DumbAwar
                     checked = ProjectSetupChecker.check(snapshot, key != null && !key.isBlank(), TaidePaths.indexPath(project.getLocationHash()));
                 } catch (CancellationException canceled) { return; }
                 catch (RuntimeException failure) {
-                    checked = new ProjectSetupChecker.Result(false, false, "无法读取 API Key 或本地配置，请打开设置检查后重试。");
+                    checked = new ProjectSetupChecker.Result(false, false, "Cannot read the API key or local settings. Check Settings and retry.");
                 }
                 if (closed || project.isDisposed() || generation.get() != request || Thread.currentThread().isInterrupted()) return;
                 ProjectSetupChecker.Result result = checked;
@@ -131,7 +131,7 @@ public final class TaideToolWindowFactory implements ToolWindowFactory, DumbAwar
             ProjectSetupChecker.Result config = configuration;
             boolean checked = config != null && (model.checked() || model.preparing());
             String detail = !model.ready() || model.preparing() ? model.detail()
-                    : config == null ? "正在检查 API 配置和课件索引…" : config.detail();
+                    : config == null ? "Checking API settings and material index…" : config.detail();
             if (model.preparing() && model.total() > 0) {
                 long percent = Math.min(100, Math.max(0, Math.round(100d * model.downloaded() / model.total())));
                 detail += " · " + percent + "%";
@@ -160,11 +160,11 @@ public final class TaideToolWindowFactory implements ToolWindowFactory, DumbAwar
             if (service != null) return service;
             return new TaideService() {
                 public TaAnswer ask(String q, CodeContext c) throws TaideException {
-                    throw new TaideException("A 的问答服务尚未接入，请启用演示模式或完成服务注册");
+                    throw new TaideException("The chat service is unavailable. Enable demo mode or check the service registration.");
                 }
                 public void askStreaming(String q, CodeContext c, java.util.function.Consumer<String> t,
                         java.util.function.Consumer<TaAnswer> done, java.util.function.Consumer<Throwable> error) {
-                    error.accept(new TaideException("A 的问答服务尚未接入，请启用演示模式或完成服务注册"));
+                    error.accept(new TaideException("The chat service is unavailable. Enable demo mode or check the service registration."));
                 }
             };
         }
@@ -202,7 +202,7 @@ public final class TaideToolWindowFactory implements ToolWindowFactory, DumbAwar
         public void openCitation(Citation citation, boolean demonstration, String root) {
             if (project.isDisposed()) return;
             if (demonstration) {
-                Messages.showInfoMessage(project, "这是界面演示引用，没有附带实际课件。接入真实问答服务并配置课件目录后，即可打开源文件。", "演示引用"); return;
+                Messages.showInfoMessage(project, "This demo citation has no source file. Configure live chat and your materials folder to open real sources.", "Demo citation"); return;
             }
             CourseSourceNavigator.getInstance(project).open(citation, root);
         }
