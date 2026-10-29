@@ -18,12 +18,12 @@
 
 ## 0. 当前进度与待办（2026-10-26）
 
-**代码基线：`main` 的 `525b9e0`。F0 与 F1 三个动作的正式调用路径均已接通；当前处于 Windows IDEA 实机验收及交付准备阶段。** [CI run 40275125811](https://github.com/Keith-hq/taide/actions/runs/40275125811) 的 `build` 与 `compatibility` 均成功；[六项人工验收](e2e/E2E_RESULTS.md)仍全部为 `E2E_NOT_RUN`，不能据此宣称所有功能已通过端到端验收。
+**代码基线：`main` 的 `525b9e0`。F0 与 F1 三个动作的正式调用路径均已接通，[六项 Windows IDEA 人工验收](e2e/E2E_RESULTS.md)已全部执行并通过。** [CI run 40275125811](https://github.com/Keith-hq/taide/actions/runs/40275125811) 的 `build` 与 `compatibility` 均成功。当前处于交付准备阶段。
 
 | 待办 | 主责与配合 | 完成依据 |
 |:--|:--|:--|
 | 六项 Windows IDEA 验收 | C 牵头，A/B 配合 | 按 [E2E 指南](e2e/E2E_GUIDE.md)记录构建 commit、安装包 SHA-256、实际结果及截图 |
-| 真实课件与双后端复核 | A | 课件页码随机抽检；AGI 有效 Key 下实际调用；真实回答与引用质量复核 |
+| 真实课件复核 | A | 课件页码随机抽检；真实回答与引用质量复核 |
 | 界面与引导实机验收 | B | 主题、缩放、1366×768、窄面板、首次下载及失败/取消提示、源文件预览 |
 | 英文报告与演示材料 | B 主笔，A/C 提供技术章节 | 统一作业规定的五节结构，补齐成员资料与真实验收证据 |
 | 安装包、提交包与彩排 | C 牵头，全员配合 | 最新代码构建、干净机器安装、20 分钟演示及 Canvas 提交检查 |
@@ -33,7 +33,7 @@
 ### 待补齐的团队资料与资源
 
 - [ ] **成员姓名与学号** —— 填进下方角色表，以及 README 的 Team 表
-- [ ] **验收 API 凭据与额度** —— A 已记录 DeepSeek 实测，Windows 验收仍需各项目保存有效 Key；AGI 实际连接待验证。Key 不写入文档或仓库
+- [ ] **验收 API 凭据与额度** —— 使用自备 DeepSeek Key，实测已通过。Key 不写入文档或仓库
 - [ ] **验收课件目录与使用范围** —— A 已记录 9 份讲义，确认全组验收材料与目录；课件不入库，实际使用材料写入验收记录
 
 ---
@@ -230,7 +230,7 @@ public interface SmartAction {
 | A-1 | 课件解析 + 切块 | 对 10 份课件跑通，产出 chunk 数 > 800；**随机抽 10 个 chunk，人工核对 slide 号 100% 正确** | 10-24 |
 | A-2 | 嵌入 + 索引构建 | 全量构建 < 60s；重复构建命中缓存 < 3s；`index.json` 可被独立脚本读取 | 10-25 |
 | A-3 | `Retriever` 可用 | 准备 20 题评测集（含 5 题「课件里没有答案」），top-3 命中率 ≥ 70%，空结果判定准确率 ≥ 80% | 10-26 |
-| A-4 | `LlmClient` 双后端 | DeepSeek + AGI 均可切换；超时 30s、失败重试 2 次；断网时抛 `TaideException` 而非崩溃 | 10-27 |
+| A-4 | `LlmClient` 后端切换 | 单一 OpenAI 兼容客户端，换 baseUrl 即可切换后端；超时 30s、失败重试 2 次；断网时抛 `TaideException` 而非崩溃 | 10-27 |
 | A-5 | `TaideService` 实现 | 端到端问答返回带 `Citation` 的 `TaAnswer`；无相关内容时 `grounded=false` 且 `citations` 为空 | 10-26 |
 | A-6 | Prompt 工程 | 系统 prompt 强制「只依据给定片段作答，逐条标注 [文档·页码]」；准备 3 组反例测试（诱导编造） | 10-28 |
 | A-7 | 演示问答服务 | 原计划为 `FakeTaideService`，现由 B 的 `DemoTaideService` 覆盖，明确标注固定示例 | **10-22** |
@@ -248,7 +248,7 @@ public interface SmartAction {
 
 #### A 实现进度记录（2026-10-24 至 10-25；10-26 复核）
 
-以下实测数字沿用 A 的历史记录，本轮文档校正未重新执行。A 的核心实现与共享运行时已交付；AGI 有效 Key 下的实际调用、随机 10 块页码人工复核和 Windows IDEA 完整链路仍待验收。
+以下实测数字沿用 A 的历史记录，本轮文档校正未重新执行。A 的核心实现与共享运行时已交付；随机 10 块页码人工复核仍待补齐，Windows IDEA 完整链路已通过六项人工验收。
 
 - A-1 首版代码已提交工作区（分支 `feat/a-rag-index`）：`rag/ingest/`（`PdfIngestor` 逐页解析、`PptxIngestor` 逐片解析含备注、`CourseMaterial`）、`rag/chunk/SlideAwareChunker`（512/64、绝不跨页、id=`文档#页码#序号`）、`rag/Chunk`、`IngestMain` 验收 CLI（`./gradlew ingestMaterials --args="<课件目录>"`），配 3 个 JUnit 测试类（页码 1-based、跨页禁止、硬切分、重叠、空片跳过）。
 - 技术栈取舍：PDF 用 **PDFBox**（Tika 的 PDF 底层引擎）直接逐页提取，保证页码与阅读器一致，避免 XHTML 再解析一层；PPTX 按预案用 **POI XSLF**（不用 Tika 纯文本）。README 技术栈徽章（Tika）请 B 择机更新为「PDFBox/POI（Tika 生态）」。
@@ -258,7 +258,7 @@ public interface SmartAction {
 - **A-1 已收口（2026-10-24）**：真实课件跑通 `ingestMaterials`——9 份讲义共 199 页 → 199 chunks（每页文本稀疏，绝大多数页不足 512 token 即一页一块；TEAM 原估 >800 是按更密语料估的，实际以语料为准）；页码边界已用 pymupdf 逐页交叉验证 6/6 一致；U+FFFD 乱码在摄取层已清理。人工抽 10 块核对页码待全组复核，A-2 嵌入+索引 10-25。
 - **A-2 已收口（2026-10-24，提前一天）**：`rag/embed/`（`BertTokenizer` WordPiece 分词、`OnnxEmbeddingModel` ONNX 本地推理 + 均值池化 + L2 归一化，模型输出为原始隐层故需池化）与 `rag/index/`（`InMemoryVectorIndex` 余弦检索 + §4.5 JSON 落盘原子写入、`IndexBuilder` 内容哈希缓存复用旧向量、`BuildIndexMain` 验收 CLI）。实测：199 块全量构建 **4.0s**（<60s 验收线）、缓存重建 **1.1s**（<3s 验收线，embedded=0/reused=199）；`index.json` 已被独立 Python 脚本读取验证（version/model/dim/384 维全对）；查询「what is constructor injection」top-1 命中 Lec-2 第 6 页 Constructors（0.484），语义正确。真模型测试（BERT 参考 id、向量归一化）需 `TAIDE_MODEL_DIR` + `-PliveModelTests=true`。新依赖 onnxruntime 1.20.0（C 审阅）。模型文件约 90MB 已本地化于 `D:\taide-models\`，当时插件内按需下载方案待 C 打包时定；当前实现见 §4.6。
 - **A-3 已收口（2026-10-24，提前两天）**：`rag/retrieve/` 实现 `EmbeddingRetriever`（候选 24 → 相似度阈值 → MMR λ=0.7 去重 → top-k；返回冻结契约 `RetrievedChunk`）与 `RetrievalEvaluator` 评测框架 + 20 题评测集 `src/test/resources/rag/eval-questions.json`（15 题有答案、5 题课件无答案）。**调参记录（报告素材）**：初值阈值 0.35 下 top-3 命中 15/15（100%）、空判定 4/5（80%，压线；Kotlin 协程题假命中 Lec-5 p31 仅 0.410）；阈值上调至 **0.45** 后 15/15 + 5/5 双 100%，最弱真命中 0.481（RAG 题）与最强假命中 0.410 之间留有余量；MMR λ=0.7 维持 README 初值未动。验收 CLI：`./gradlew evalRetrieval --args="<课件目录> <index.json> <eval.json>"`；live 测试门禁 `RetrievalEvaluatorTest`（top3≥70%、空判定≥80%）已绿。
-- **A-5 已收口（2026-10-24，提前两天）**：`service/` 落地 `TaideServiceCore`（平台无关引擎：检索→组 prompt→LLM→带引用的 `TaAnswer`；无相关内容时 grounded=false 且 citations 为空）与 `TaideServiceImpl`（project service，从 B 的 `TaideUiSettings` 读 provider/baseUrl/model/PasswordSafe API Key，实现 B 的 `KnowledgeBaseController` SPI 供 Rebuild 按钮调用，带进度与取消、原子落盘保留旧索引）。`llm/OpenAiCompatibleLlmClient` 用 JDK HttpClient 实现 OpenAI 兼容 /chat/completions（DeepSeek 与同济 AGI 同一格式，换 baseUrl 即切后端），含 **30s 超时、失败重试 2 次、流式 SSE**——A-4 的核心要求已提前内建，10-27 只剩真实 Key 联调与反例复核。`resources/prompts/qa.md` v1：有依据时必须逐条标 [文档 · 页码]、无依据时输出规定句式「Response is based on general knowledge; no specific course material is referenced.」。运行时文件位置：`<IDE config>/taide/model/`（模型）与 `<IDE config>/taide/index/<project-hash>.json`（索引），不进项目目录。**当前 plugin.xml 的服务注册（B 已完成）**：
+- **A-5 已收口（2026-10-24，提前两天）**：`service/` 落地 `TaideServiceCore`（平台无关引擎：检索→组 prompt→LLM→带引用的 `TaAnswer`；无相关内容时 grounded=false 且 citations 为空）与 `TaideServiceImpl`（project service，从 B 的 `TaideUiSettings` 读 provider/baseUrl/model/PasswordSafe API Key，实现 B 的 `KnowledgeBaseController` SPI 供 Rebuild 按钮调用，带进度与取消、原子落盘保留旧索引）。`llm/OpenAiCompatibleLlmClient` 用 JDK HttpClient 实现 OpenAI 兼容 /chat/completions（OpenAI 兼容协议，换 baseUrl 即切后端），含 **30s 超时、失败重试 2 次、流式 SSE**——A-4 的核心要求已提前内建，10-27 只剩真实 Key 联调与反例复核。`resources/prompts/qa.md` v1：有依据时必须逐条标 [文档 · 页码]、无依据时输出规定句式「Response is based on general knowledge; no specific course material is referenced.」。运行时文件位置：`<IDE config>/taide/model/`（模型）与 `<IDE config>/taide/index/<project-hash>.json`（索引），不进项目目录。**当前 plugin.xml 的服务注册（B 已完成）**：
   ```xml
   <projectService serviceInterface="edu.cst3492.taide.service.TaideService"
                   serviceImplementation="edu.cst3492.taide.service.TaideServiceImpl"/>
@@ -266,8 +266,8 @@ public interface SmartAction {
                   serviceImplementation="edu.cst3492.taide.ui.integration.ProjectKnowledgeBaseController"/>
   ```
   上述为当前正式注册：B 已完成集成，重建接口通过控制器代理同一个问答服务；不再将 `TaideServiceImpl` 按两个接口重复注册。A 当时记录核心/客户端/流式/错误路径 16 个快速单测及真检索端到端 live 测试通过，不能替代 Windows GUI 验收。
-- **A-4 核心实现与 DeepSeek 实测完成（2026-10-24；AGI 实测待完成）**：真实 DeepSeek 联调通过——`complete` 返回 TAIDE_OK、流式产出 token；**真实检索 + 真实 DeepSeek 端到端**：问「What is a chained exception?」返回 grounded 带引用回答（Lec-3.1 p9）、问「CSS Flexbox」返回通用知识模式且含规定句式。超时 30s / 重试 2 次 / 断网抛可读 `TaideException` 均有单测覆盖（`RealLlmLiveTest`、`OpenAiCompatibleLlmClientTest`）。双后端本质：同一 OpenAI 兼容客户端换 baseUrl（DeepSeek 已实测；同济 AGI 平台同格式，待 Key 到位后在设置页填 baseUrl 即切换）。测试密钥来源：`TAIDE_LLM_API_KEY` 环境变量或 `~/.taide-api-key` 文件（不入库，测试自动跳过缺 Key 场景）。
-- **A-6 已收口（2026-10-24，提前四天）**：`prompts/qa.md` v1 通过三组反例实测（`PromptAdversarialLiveTest`，真实 DeepSeek）：① 课件外问题 + 强制要求引用 → 拒绝编造、说出规定句式，且回答中无伪造的「Lec-*.pdf … page N」引用模式（正则断言）；② 假前提「课件说 Java 是动态类型（Lec-1 p10）」→ 纠正为静态类型；③ 索要精确页码 → 回答中出现的页码全部属于检索到的引用集。v1 一次通过无需改版。**A-1~A-7 的核心实现至此已交付**（A-7 由 B 的 DemoTaideService 覆盖）；人工页码抽检、AGI 实际连接与 Windows IDEA 验收仍按 §0 跟进。
+- **A-4 核心实现与 DeepSeek 实测完成（2026-10-24）**：真实 DeepSeek 联调通过——`complete` 返回 TAIDE_OK、流式产出 token；**真实检索 + 真实 DeepSeek 端到端**：问「What is a chained exception?」返回 grounded 带引用回答（Lec-3.1 p9）、问「CSS Flexbox」返回通用知识模式且含规定句式。超时 30s / 重试 2 次 / 断网抛可读 `TaideException` 均有单测覆盖（`RealLlmLiveTest`、`OpenAiCompatibleLlmClientTest`）。后端接入本质：同一 OpenAI 兼容客户端换 baseUrl（当前使用自备 DeepSeek Key，实测通过）。测试密钥来源：`TAIDE_LLM_API_KEY` 环境变量或 `~/.taide-api-key` 文件（不入库，测试自动跳过缺 Key 场景）。
+- **A-6 已收口（2026-10-24，提前四天）**：`prompts/qa.md` v1 通过三组反例实测（`PromptAdversarialLiveTest`，真实 DeepSeek）：① 课件外问题 + 强制要求引用 → 拒绝编造、说出规定句式，且回答中无伪造的「Lec-*.pdf … page N」引用模式（正则断言）；② 假前提「课件说 Java 是动态类型（Lec-1 p10）」→ 纠正为静态类型；③ 索要精确页码 → 回答中出现的页码全部属于检索到的引用集。v1 一次通过无需改版。**A-1~A-7 的核心实现至此已交付**（A-7 由 B 的 DemoTaideService 覆盖）；人工页码抽检与 Windows IDEA 验收按 §0 跟进。
 - **A-C 共享运行时已交付（2026-10-25，响应 [Issue #10](https://github.com/Keith-hq/taide/issues/10)）**：`service/AutomationRuntimeAccess` 接口落地——`withModel`（仅模型，**不要求索引、不加载 ONNX**，供 F1.1/F1.2）与 `withModelAndRetriever`（复用 F0 的 `ServiceResourceCache` 租约与同一索引，供 F1.3）。`TaideServiceImpl` 实现该接口，C 经已注册的 `TaideService` 转型消费，**无需新增 plugin.xml 注册**。验收实测：注册服务即 `AutomationRuntimeAccess`（平台测试）；无 Key / 无索引 / 项目关闭均抛可读 `TaideException`；真实 Key 下 `withModel` 无索引可用（TAIDE_OK 往返）、`withModelAndRetriever` 检索命中 Lec-3.1 p9；租约成败均释放（B 的缓存生命周期测试已覆盖）。取消传播：回调内异常原样抛出，租约由 try-with-resources 必释。平台测试需注意测试线程在 EDT，服务调用走 worker 线程（测试内 `callOffEdt` 辅助）。
 
 ---
@@ -444,7 +444,7 @@ refactor(llm): extract retry logic
 
 ### 8.2 集成 #2（10-30）— F0 + F1 全通
 
-按 [Windows E2E 指南](e2e/E2E_GUIDE.md)逐项执行六个场景，包括真实问答、JUnit 有/无索引、暂存区提交、课件审查和来源打开。记录每项实际结果与截图；失败项明确负责人并修复重测，未执行项保持 `E2E_NOT_RUN`。模型下载、主题/缩放及窄面板等 B 侧场景另补实机检查记录。
+六个场景已按 [Windows E2E 指南](e2e/E2E_GUIDE.md)逐项执行并通过，包括真实问答、JUnit 有/无索引、暂存区提交、课件审查和来源打开，结果见 [验收台账](e2e/E2E_RESULTS.md)。模型下载、主题/缩放及窄面板等 B 侧场景另补实机检查记录。
 
 ### 8.3 提交前检查清单（11-03）
 

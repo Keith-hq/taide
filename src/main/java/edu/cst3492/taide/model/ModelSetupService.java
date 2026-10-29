@@ -7,6 +7,7 @@ import com.intellij.openapi.application.ModalityState;
 import com.intellij.openapi.components.*;
 import com.intellij.openapi.progress.*;
 import com.intellij.openapi.project.Project;
+import com.intellij.openapi.diagnostic.Logger;
 import com.intellij.util.net.HttpConnectionUtils;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -23,6 +24,7 @@ import java.util.concurrent.atomic.AtomicReference;
 @Service(Service.Level.APP)
 @State(name = "TaideModelSetup", storages = @Storage(value = "taide-model.xml", roamingType = RoamingType.DISABLED))
 public final class ModelSetupService implements PersistentStateComponent<ModelSetupService.Location>, Disposable {
+    private static final Logger LOG = Logger.getInstance(ModelSetupService.class);
     public static final class Location {
         public String directory = "";
         public boolean managed;
@@ -164,6 +166,7 @@ public final class ModelSetupService implements PersistentStateComponent<ModelSe
             @Override public void onSuccess() { finish(""); }
             @Override public void onCancel() { finish("Download canceled. Your existing model is unchanged. You can retry anytime."); }
             @Override public void onThrowable(@NotNull Throwable error) {
+                LOG.warn("Retrieval model preparation failed", error);
                 finish(failureDetail(error));
             }
             private void finish(String failure) {
@@ -199,7 +202,9 @@ public final class ModelSetupService implements PersistentStateComponent<ModelSe
             if (!"https".equalsIgnoreCase(uri.getScheme())) throw new IOException("Model source requires HTTPS.");
             if (operation != null) operation.checkCanceled();
             HttpURLConnection connection = HttpConnectionUtils.openHttpConnection(uri.toString());
-            connection.setConnectTimeout(15_000); connection.setReadTimeout(15_000);
+            connection.setConnectTimeout(8_000); connection.setReadTimeout(30_000);
+            connection.setRequestProperty("User-Agent", "TAIDE/0.1 model-installer");
+            connection.setRequestProperty("Accept-Encoding", "identity");
             connection.setInstanceFollowRedirects(false);
             if (operation != null) operation.connection.set(connection);
             try {
@@ -208,7 +213,9 @@ public final class ModelSetupService implements PersistentStateComponent<ModelSe
                 if (code >= 300 && code < 400) {
                     String redirect = connection.getHeaderField("Location");
                     if (redirect == null) throw new IOException("Model source returned an invalid redirect.");
-                    uri = uri.resolve(redirect); connection.disconnect(); continue;
+                    uri = uri.resolve(redirect); connection.disconnect();
+                    if (operation != null) operation.connection.compareAndSet(connection, null);
+                    continue;
                 }
                 if (code != 200) throw new IOException("Model download returned HTTP " + code);
                 InputStream input = connection.getInputStream();
@@ -248,8 +255,12 @@ public final class ModelSetupService implements PersistentStateComponent<ModelSe
     }
 
     private static long totalBytes() { return ModelInstaller.artifacts().stream().mapToLong(ModelInstaller.Artifact::size).sum(); }
-    private static String failureDetail(Throwable error) {
+    static String failureDetail(Throwable error) {
         for (Throwable cause = error; cause != null; cause = cause.getCause()) {
+            if (cause instanceof ModelInstaller.DownloadException) {
+                return cause.getMessage() + " Check Settings → Appearance & Behavior → System Settings → HTTP Proxy, "
+                        + "then retry or choose an existing model folder.";
+            }
             String message = cause.getMessage();
             if (message == null) continue;
             if (message.contains("verification failed") || message.contains("exceeds its expected size")) {

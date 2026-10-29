@@ -28,7 +28,7 @@ Verify that the shared runtime can ingest course materials, build an embedding i
 1. In IDEA, navigate to `File > Settings > Tools > TAIDE`.
 2. In the **本地检索模型** section, click **下载并配置**, or **使用已有目录…** to select a directory containing the matching `all-MiniLM-L6-v2` `model.onnx` and `vocab.txt` files. Wait for the ready state. If downloading fails, check the IDEA HTTP proxy or use validated existing files; do not continue until model validation succeeds.
 3. Configure the connection and course fields:
-   - **Provider**: `DeepSeek` (or `AGI` with the institution's endpoint, key and model)
+   - **Provider**: `DeepSeek` with the team's own key (the `AGI` option is still in the dropdown but was not used for acceptance)
    - **API base URL**: `https://api.deepseek.com` for DeepSeek
    - **API key**: A working test key for that provider and endpoint
    - **Model ID**: `deepseek-chat`

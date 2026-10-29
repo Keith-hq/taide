@@ -27,7 +27,7 @@
 > [!IMPORTANT]
 > **当前状态：F0 与 F1 三个智能动作均已在代码中接入正式项目服务，正在进行实机验收与交付准备。** 最新核查基线为 `main` 的 `525b9e0`，最后更新：2026-10-26。
 > 聊天默认开启演示模式，返回明确标注的固定示例。真实课程问答需要检索模型、课件索引和有效 API Key，并由用户显式关闭演示模式。F1 动作使用实际配置的 API，不由聊天演示模式提供固定答案。
-> [六项 Windows IDEA 验收](docs/e2e/E2E_RESULTS.md)仍为 `E2E_NOT_RUN`；代码接通与 CI 通过不代表人工验收完成。操作步骤见 [验收指南](docs/e2e/E2E_GUIDE.md)和 [六项真实场景 Word 操作文档](docs/TAIDE-Windows-IDEA六项真实场景验收操作文档-V1.0.0.docx)。
+> [六项 Windows IDEA 验收](docs/e2e/E2E_RESULTS.md)已全部执行并通过。操作步骤见 [验收指南](docs/e2e/E2E_GUIDE.md)和 [六项真实场景 Word 操作文档](docs/TAIDE-Windows-IDEA六项真实场景验收操作文档-V1.0.0.docx)。
 
 ---
 
@@ -73,7 +73,7 @@ TAIDE 为 **CST3492 — Java 企业级应用开发**（2026/27 学年第一学�
 
 **F1 的正式服务来源：** 已注册的 `TaideServiceImpl` 实现 `AutomationRuntimeAccess`。F1.1/F1.2 通过 `withModel` 使用独立缓存的模型客户端，与聊天共享连接配置和凭据机制，不要求课件索引或加载 ONNX；F1.3 通过 `withModelAndRetriever` 复用聊天核心的模型、检索器和索引，并在回调期间持有资源租约。无需额外注册 `LlmClient` / `Retriever` 或手动调用 `bind`；绑定接口保留给测试及定制场景。详见 [自动化服务接入](docs/AUTOMATION.md#服务接入)。
 
-**剩余验收与交付：** 按 [E2E 指南](docs/e2e/E2E_GUIDE.md)执行六个场景，将实际构建 commit、安装包 SHA-256、结果与截图填入 [验收台账](docs/e2e/E2E_RESULTS.md)。另需核验界面主题、缩放、窄面板和下载失败等异常状态；A 补齐 AGI 实际连接及课件页码抽检，全组完成英文报告、演示材料、干净机器安装与彩排。现有组件测试不能替代这些验收。
+**剩余交付：** 六个场景已按 [E2E 指南](docs/e2e/E2E_GUIDE.md)全部执行并通过，结果见 [验收台账](docs/e2e/E2E_RESULTS.md)。另需核验界面主题、缩放、窄面板和下载失败等异常状态；A 补齐课件页码抽检，全组完成英文报告、演示材料、干净机器安装与彩排。
 
 ## 🛠️ 技术栈
 
@@ -166,10 +166,10 @@ macOS/Linux 使用 `./gradlew`。安装包位于 `build/distributions/taide-0.1.
 ### 3. 配置真实课程问答
 
 1. 打开 `View → Tool Windows → TAIDE`。首次使用引导会展示检索模型、API/课件与知识库的准备状态；默认仍使用演示答案。
-2. 点击 **下载并配置**，或在 `Settings → Tools → TAIDE → 本地检索模型` 中使用同名按钮。插件仅在点击后联网，在后台准备约 **90 MB** 的官方 `all-MiniLM-L6-v2` 模型 `model.onnx` 与词表 `vocab.txt`，显示下载进度并校验完整性。无需 PowerShell、环境变量或重新启动 IDE。
-3. 已有模型时，在上述设置页点击 **使用已有目录…**，选择同时包含两个文件的目录并等待校验通过；需要切回插件管理的目录时点击 **使用默认目录**。已有文件须与插件固定版本匹配，仅有相同文件名不足以通过校验。
+2. 点击 **Download model**，或在 `Settings → Tools → TAIDE` 中使用同名按钮。插件仅在点击后联网，在后台准备约 **90 MB** 的官方 `all-MiniLM-L6-v2` 模型 `model.onnx` 与词表 `vocab.txt`，显示下载进度并校验完整性。无需 PowerShell、环境变量或重新启动 IDE。
+3. 已有模型时，在上述设置页点击 **Use existing folder…**，选择同时包含两个文件的目录并等待校验通过；需要切回插件管理的目录时点击 **Use default folder**。已有文件须与插件固定版本匹配，仅有相同文件名不足以通过校验。
 4. 把本地 PDF/PPTX 课件直接放在同一个可读文件夹中；当前摄取不递归扫描子目录，也不对扫描版 PDF 做 OCR。
-5. 在 `Settings → Tools → TAIDE` 选择 Provider，填写 API base URL、Model ID、API Key 和 Course directory。DeepSeek 默认基址为 `https://api.deepseek.com`、模型为 `deepseek-chat`；AGI 使用学校提供的兼容基址和模型名称。
+5. 在 `Settings → Tools → TAIDE` 选择 Provider，填写 API base URL、Model ID、API Key 和 Course directory。DeepSeek 默认基址为 `https://api.deepseek.com`、模型为 `deepseek-chat`；也可填入其他 OpenAI 兼容端点。
 6. 点 **Apply** 保存配置，再点 **Rebuild Knowledge Base**。模型未就绪时重建按钮禁用。索引在后台构建并显示进度，可在发布新索引前取消；已完成的重建不会因取消设置对话框而撤销。
 7. 准备完成后，在工具窗点击 **切换真实问答**；也可在设置页取消勾选 **Use demo service** 并点 **Apply / OK**。下载成功不会自动关闭演示模式。发送新问题检查引用；未命中时应显示通用知识提示且没有课件引用，已有演示历史继续标为示例。
 
@@ -179,7 +179,9 @@ macOS/Linux 使用 `./gradlew`。安装包位于 `build/distributions/taide-0.1.
 
 下载来自 [sentence-transformers 官方 MiniLM 仓库的固定版本](https://huggingface.co/sentence-transformers/all-MiniLM-L6-v2/tree/1110a243fdf4706b3f48f1d95db1a4f5529b4d41)，采用 Apache 2.0 许可。插件按固定文件大小与 SHA-256 校验两个文件，成功后保存到 **`<IDE config>/taide/model/`**；同一 IDE 配置下所有项目共享，已校验的缓存可离线复用。下载文件不进入项目仓库，模型准备也不会替用户申请 API Key 或建立课件索引。
 
-下载连接使用 IDE 的 HTTP Proxy 配置。若超时或连接失败，打开 **`Settings → Appearance & Behavior → System Settings → HTTP Proxy`**，按自己的网络环境配置后重试；也可从可联网的机器复制固定版本的完整模型目录，使用 **使用已有目录…**。下载可取消，未完整校验的文件不会被当作可用模型。
+下载首先连接 `huggingface.co`，失败后自动切换到 [HF-Mirror](https://hf-mirror.com/) 的同一固定版本；每个源最多尝试两次，后续文件优先使用本次已成功的源。中断或校验失败的文件会丢弃后重新下载；两个来源始终使用相同的文件大小和 SHA-256 校验，全部通过才启用。
+
+下载连接使用 IDE 的 HTTP Proxy 配置，进度会显示当前来源，失败提示会区分域名解析、连接超时、TLS 和 HTTP 状态错误。所有来源都失败时，打开 **`Settings → Appearance & Behavior → System Settings → HTTP Proxy`**，按自己的网络环境配置后重试；也可从可联网的机器复制固定版本的完整模型目录，使用 **Use existing folder…**。下载可取消，未完整校验的文件不会被当作可用模型。
 
 开发和 CLI 仍兼容 `TAIDE_MODEL_DIR` 环境变量与 `taide.model.dir` JVM 属性。**IDE 设置中显式选择的目录（包括“使用默认目录”）优先**；没有显式选择时，才依次读取 JVM 属性、环境变量和默认目录。环境变量只会被随后启动的 IDE 继承，普通用户无需设置它。
 

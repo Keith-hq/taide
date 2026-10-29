@@ -39,7 +39,7 @@ public final class ModelPreparationPanel extends JPanel implements AutoCloseable
         service = ModelSetupService.getInstance();
         setOpaque(false);
         addRow(note("Retrieves reference materials; your configured API generates the answers. The official MiniLM model is about 90 MB and uses the Apache 2.0 license."), 0, 0);
-        addRow(note("Connects only when you click Download model. The downloaded model is stored in the IDE configuration folder and shared across projects."), 1, 4);
+        addRow(note("Downloads from huggingface.co with automatic retry and fallback to hf-mirror.com. Both sources must pass the same SHA-256 check. The model is stored in the IDE configuration folder and shared across projects."), 1, 4);
         status.getAccessibleContext().setAccessibleName("Model setup status");
         addRow(status, 2, 10);
         location.setFocusable(true);

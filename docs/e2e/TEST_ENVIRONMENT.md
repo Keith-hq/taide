@@ -58,8 +58,8 @@ F1.1 and F1.2 use model-only access: they require a configured language-model en
 ### 4.2 Language Model Provider (F0, F1.1, F1.2, F1.3)
 In `Settings > Tools > TAIDE`:
 - **Mode**: Uncheck `Use demo service (no network or API key required)` for real F0 chat acceptance. The default chat demo produces fixed, labeled samples. F1 actions use the configured live service independently of that chat demo switch.
-- **Provider**: The actual dropdown offers `DeepSeek` and `AGI`.
-- **API base URL**: `https://api.deepseek.com`, or the OpenAI-compatible base URL supplied by the institution for `AGI`. Use the provider's model ID and its own key. There is no separate `Custom OpenAI-compatible` dropdown option.
+- **Provider**: The dropdown offers `DeepSeek` and `AGI`; acceptance used `DeepSeek` with the team's own key.
+- **API base URL**: `https://api.deepseek.com` for DeepSeek. The `AGI` option expects the institution's OpenAI-compatible base URL. Use the provider's model ID and its own key. There is no separate `Custom OpenAI-compatible` dropdown option.
 - **Model ID**: `deepseek-chat`
 - **API key**: A working key for the selected provider and endpoint. Save with **Apply**; keys are stored through IDE PasswordSafe, scoped by project/provider/endpoint. A newly opened sample or temporary project needs its own key configuration.
 - **Apply before use**: Save the API fields, course directory and intended demo state before rebuilding or invoking an action. Leave the key field blank only when retaining a key already stored for that scope.

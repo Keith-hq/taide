@@ -70,6 +70,18 @@ public final class ModelSetupPlatformTest extends BasePlatformTestCase {
         } finally { Files.delete(empty); }
     }
 
+    public void testDownloadFailureShowsSourceDiagnosticsAndProxyGuidance() {
+        var failure = new ModelInstaller.DownloadException("model.onnx",
+                java.util.List.of("huggingface.co: connection or read timed out", "hf-mirror.com: TLS connection failed"),
+                java.util.List.of(new IOException("Origin unavailable"), new IOException("Mirror unavailable")));
+        String detail = ModelSetupService.failureDetail(new RuntimeException("Preparation failed", failure));
+        assertTrue(detail.contains("model.onnx"));
+        assertTrue(detail.contains("huggingface.co"));
+        assertTrue(detail.contains("hf-mirror.com"));
+        assertTrue(detail.contains("HTTP Proxy"));
+        assertTrue(detail.contains("existing model folder"));
+    }
+
     public void testMissingModelFinishesCheckingAndOffersPreparationBeforeRebuild() throws Exception {
         Path empty = Files.createTempDirectory("taide-missing-model-");
         TaideSettingsConfigurable configurable = new TaideSettingsConfigurable(getProject());

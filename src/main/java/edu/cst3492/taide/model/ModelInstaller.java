@@ -17,6 +17,7 @@ import java.nio.file.StandardOpenOption;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.HashSet;
+import java.util.ArrayList;
 import java.util.HexFormat;
 import java.util.List;
 import java.util.Objects;
@@ -29,11 +30,16 @@ public final class ModelInstaller {
     public static final String REVISION = "1110a243fdf4706b3f48f1d95db1a4f5529b4d41";
     private static final String BASE = "https://huggingface.co/sentence-transformers/all-MiniLM-L6-v2/resolve/"
             + REVISION + "/";
+    private static final String MIRROR = "https://hf-mirror.com/sentence-transformers/all-MiniLM-L6-v2/resolve/"
+            + REVISION + "/";
     private static final List<Artifact> ARTIFACTS = List.of(
             new Artifact("model.onnx", URI.create(BASE + "onnx/model.onnx"), 90_405_214,
-                    "6fd5d72fe4589f189f8ebc006442dbb529bb7ce38f8082112682524616046452"),
+                    "6fd5d72fe4589f189f8ebc006442dbb529bb7ce38f8082112682524616046452",
+                    List.of(URI.create(MIRROR + "onnx/model.onnx"))),
             new Artifact("vocab.txt", URI.create(BASE + "vocab.txt"), 231_508,
-                    "07eced375cec144d27c900241f3e339478dec958f92fddbc551f295c992038a3"));
+                    "07eced375cec144d27c900241f3e339478dec958f92fddbc551f295c992038a3",
+                    List.of(URI.create(MIRROR + "vocab.txt"))));
+    private static final int ATTEMPTS_PER_SOURCE = 2;
     private static final ReentrantLock[] LOCKS = new ReentrantLock[64];
     private static final int BUFFER_SIZE = 64 * 1024;
 
@@ -41,11 +47,16 @@ public final class ModelInstaller {
         for (int i = 0; i < LOCKS.length; i++) LOCKS[i] = new ReentrantLock();
     }
 
-    public record Artifact(String fileName, URI uri, long size, String sha256) {
+    public record Artifact(String fileName, URI uri, long size, String sha256, List<URI> fallbacks) {
+        public Artifact(String fileName, URI uri, long size, String sha256) {
+            this(fileName, uri, size, sha256, List.of());
+        }
+
         public Artifact {
             Objects.requireNonNull(fileName);
             Objects.requireNonNull(uri);
             Objects.requireNonNull(sha256);
+            fallbacks = List.copyOf(fallbacks);
             if (fileName.isBlank() || fileName.equals(".") || fileName.equals("..")
                     || fileName.contains("/") || fileName.contains("\\") || fileName.contains(":")) {
                 throw new IllegalArgumentException("Artifact must have a simple file name");
@@ -53,6 +64,13 @@ public final class ModelInstaller {
             if (size <= 0 || !sha256.matches("[0-9a-f]{64}")) {
                 throw new IllegalArgumentException("Artifact requires an exact size and SHA-256");
             }
+        }
+
+        List<URI> sources() {
+            List<URI> sources = new ArrayList<>();
+            sources.add(uri);
+            for (URI fallback : fallbacks) if (!sources.contains(fallback)) sources.add(fallback);
+            return sources;
         }
     }
 
@@ -150,6 +168,7 @@ public final class ModelInstaller {
         Path staging = Files.createTempDirectory(target.getParent(), "." + target.getFileName() + ".download-");
         try {
             long completed = 0;
+            String preferredHost = null;
             for (Artifact artifact : manifest) {
                 cancellation.checkCanceled();
                 Path stagedFile = staging.resolve(artifact.fileName());
@@ -164,10 +183,7 @@ public final class ModelInstaller {
                     }
                 }
                 if (!reused) {
-                    progress.update(completed, total, "Downloading " + artifact.fileName());
-                    try (InputStream input = transport.open(artifact.uri())) {
-                        transfer(input, stagedFile, artifact, progress, cancellation, completed);
-                    }
+                    preferredHost = download(artifact, stagedFile, preferredHost, progress, cancellation, completed);
                 }
                 completed += artifact.size();
                 progress.update(completed, total, "Verified " + artifact.fileName());
@@ -182,6 +198,56 @@ public final class ModelInstaller {
         } finally {
             deleteKnownFiles(staging);
         }
+    }
+
+    private String download(Artifact artifact, Path destination, String preferredHost, Progress progress,
+                            Cancellation cancellation, long completed) throws IOException {
+        List<URI> sources = artifact.sources();
+        if (preferredHost != null) sources.sort(java.util.Comparator.comparing(uri -> !preferredHost.equals(uri.getHost())));
+        List<IOException> failures = new ArrayList<>();
+        List<String> details = new ArrayList<>();
+        for (int attempt = 1; attempt <= ATTEMPTS_PER_SOURCE; attempt++) {
+            for (URI source : sources) {
+                cancellation.checkCanceled();
+                progress.update(completed, total, "Connecting to " + source.getHost() + " (attempt "
+                        + attempt + "/" + ATTEMPTS_PER_SOURCE + ") · " + artifact.fileName());
+                try (InputStream input = transport.open(source)) {
+                    transfer(input, destination, artifact, (done, bytes, detail) ->
+                            progress.update(done, bytes, detail + " · " + source.getHost()), cancellation, completed);
+                    return source.getHost();
+                } catch (IOException failure) {
+                    // Each attempt starts fresh, including after a truncated or corrupt response.
+                    Files.deleteIfExists(destination);
+                    cancellation.checkCanceled();
+                    failures.add(failure);
+                    details.add(source.getHost() + ": " + failureReason(failure));
+                }
+            }
+        }
+        throw new DownloadException(artifact.fileName(), details, failures);
+    }
+
+    /** Fixed source hosts and classified errors only; signed redirect URLs are not shown in the UI. */
+    public static final class DownloadException extends IOException {
+        DownloadException(String fileName, List<String> details, List<IOException> failures) {
+            super("Could not download " + fileName + ". " + String.join("; ", new java.util.LinkedHashSet<>(details)) + ".",
+                    failures.getLast());
+            for (int i = 0; i < failures.size() - 1; i++) addSuppressed(failures.get(i));
+        }
+    }
+
+    private static String failureReason(IOException failure) {
+        for (Throwable cause = failure; cause != null; cause = cause.getCause()) {
+            if (cause instanceof java.net.UnknownHostException) return "host not found";
+            if (cause instanceof java.net.SocketTimeoutException) return "connection or read timed out";
+            if (cause instanceof javax.net.ssl.SSLException) return "TLS connection failed";
+            if (cause instanceof java.net.ConnectException) return "connection failed";
+            String message = cause.getMessage();
+            if (message == null) continue;
+            if (message.matches("Model download returned HTTP [0-9]{3}")) return message;
+            if (message.contains("verification failed") || message.contains("exceeds its expected size")) return "file verification failed";
+        }
+        return "I/O error";
     }
 
     private void transfer(InputStream input, Path destination, Artifact artifact, Progress progress,

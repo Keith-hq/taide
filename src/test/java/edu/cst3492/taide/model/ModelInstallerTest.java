@@ -9,6 +9,7 @@ import org.junit.jupiter.api.io.TempDir;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.FilterInputStream;
 import java.net.HttpURLConnection;
 import java.net.InetSocketAddress;
 import java.net.URI;
@@ -108,6 +109,10 @@ class ModelInstallerTest {
         assertEquals(231_508, artifacts.get(1).size());
         assertTrue(artifacts.stream().allMatch(a -> a.uri().getScheme().equals("https")
                 && a.uri().getPath().contains("/resolve/" + ModelInstaller.REVISION + "/")));
+        assertTrue(artifacts.stream().allMatch(a -> a.fallbacks().size() == 1
+                && a.fallbacks().getFirst().getHost().equals("hf-mirror.com")
+                && a.fallbacks().getFirst().getScheme().equals("https")
+                && a.fallbacks().getFirst().getPath().equals(a.uri().getPath())));
         assertThrows(UnsupportedOperationException.class, () -> artifacts.clear());
     }
 
@@ -203,7 +208,7 @@ class ModelInstallerTest {
         };
         ModelInstaller installer = new ModelInstaller(uri -> endless, manifest());
         assertThrows(IOException.class, () -> installer.install(target(), QUIET, ACTIVE));
-        assertEquals(64 * 1024, readCount.get());
+        assertEquals(2 * 64 * 1024, readCount.get());
         assertTrue(closed.get());
         assertFalse(Files.exists(target()));
         assertNoTemporaryDirectories();
@@ -217,6 +222,118 @@ class ModelInstallerTest {
         assertThrows(IOException.class, () -> installer().install(target(), QUIET, ACTIVE));
         assertArrayEquals(previousVocab, Files.readAllBytes(target().resolve("vocab.txt")));
         assertArrayEquals(MODEL, Files.readAllBytes(target().resolve("model.onnx")));
+        assertNoTemporaryDirectories();
+    }
+
+    private List<ModelInstaller.Artifact> mirroredManifest() throws Exception {
+        return manifest().stream().map(a -> new ModelInstaller.Artifact(a.fileName(),
+                URI.create("https://official.invalid/" + a.fileName()), a.size(), a.sha256(),
+                List.of(URI.create("https://mirror.invalid/" + a.fileName())))).toList();
+    }
+
+    @Test
+    void unreachableOriginFallsBackAndUsesTheWorkingMirrorForTheNextFile() throws Exception {
+        List<URI> attempts = new ArrayList<>();
+        List<String> progress = new ArrayList<>();
+        ModelInstaller installer = new ModelInstaller(uri -> {
+            attempts.add(uri);
+            if (uri.getHost().equals("official.invalid")) throw new java.net.SocketTimeoutException();
+            return new ByteArrayInputStream(uri.getPath().endsWith("model.onnx") ? MODEL : VOCAB);
+        }, mirroredManifest());
+        installer.install(target(), (done, total, detail) -> progress.add(detail), ACTIVE);
+        assertTrue(installer.isReady(target(), ACTIVE));
+        assertEquals(List.of("official.invalid/model.onnx", "mirror.invalid/model.onnx", "mirror.invalid/vocab.txt"),
+                attempts.stream().map(uri -> uri.getHost() + uri.getPath()).toList());
+        assertTrue(progress.stream().anyMatch(detail -> detail.contains("Connecting to mirror.invalid")));
+        assertNoTemporaryDirectories();
+    }
+
+    @Test
+    void failedMirrorCanFallBackToOriginForTheRemainingFile() throws Exception {
+        List<String> attempts = new ArrayList<>();
+        ModelInstaller installer = new ModelInstaller(uri -> {
+            String request = uri.getHost() + uri.getPath();
+            attempts.add(request);
+            if (request.equals("official.invalid/model.onnx") || request.equals("mirror.invalid/vocab.txt"))
+                throw new IOException("Unavailable");
+            return new ByteArrayInputStream(uri.getPath().endsWith("model.onnx") ? MODEL : VOCAB);
+        }, mirroredManifest());
+        installer.install(target(), QUIET, ACTIVE);
+        assertTrue(installer.isReady(target(), ACTIVE));
+        assertEquals(List.of("official.invalid/model.onnx", "mirror.invalid/model.onnx", "mirror.invalid/vocab.txt",
+                "official.invalid/vocab.txt"), attempts);
+    }
+
+    @Test
+    void interruptedResponseIsClosedAndRetriedWithAFreshFile() throws Exception {
+        AtomicInteger attempts = new AtomicInteger();
+        AtomicBoolean closed = new AtomicBoolean();
+        ModelInstaller installer = new ModelInstaller(uri -> {
+            if (attempts.incrementAndGet() > 1) return new ByteArrayInputStream(MODEL);
+            return new FilterInputStream(new ByteArrayInputStream(MODEL)) {
+                private boolean sent;
+                @Override public int read(byte[] buffer, int offset, int length) throws IOException {
+                    if (sent) throw new java.net.SocketTimeoutException("Read stalled");
+                    sent = true;
+                    return super.read(buffer, offset, MODEL.length / 2);
+                }
+                @Override public void close() throws IOException { closed.set(true); super.close(); }
+            };
+        }, List.of(manifest().getFirst()));
+        installer.install(target(), QUIET, ACTIVE);
+        assertEquals(2, attempts.get());
+        assertTrue(closed.get());
+        assertArrayEquals(MODEL, Files.readAllBytes(target().resolve("model.onnx")));
+        assertNoTemporaryDirectories();
+    }
+
+    @Test
+    void corruptMirrorIsNeverPublishedAndAnotherAttemptCanRecover() throws Exception {
+        AtomicInteger attempts = new AtomicInteger();
+        byte[] corrupt = MODEL.clone(); corrupt[0] ^= 1;
+        ModelInstaller installer = new ModelInstaller(uri -> switch (attempts.incrementAndGet()) {
+            case 1 -> throw new java.net.UnknownHostException("Origin unreachable");
+            case 2 -> new ByteArrayInputStream(corrupt);
+            default -> new ByteArrayInputStream(MODEL);
+        }, List.of(mirroredManifest().getFirst()));
+        installer.install(target(), QUIET, ACTIVE);
+        assertEquals(3, attempts.get());
+        assertArrayEquals(MODEL, Files.readAllBytes(target().resolve("model.onnx")));
+        assertNoTemporaryDirectories();
+    }
+
+    @Test
+    void exhaustedSourcesReportTheirHostsAndBoundRetriesWithoutLeakingUrls() throws Exception {
+        AtomicInteger attempts = new AtomicInteger();
+        byte[] previous = "partial vocabulary".getBytes(StandardCharsets.UTF_8);
+        existing(MODEL, previous);
+        ModelInstaller installer = new ModelInstaller(uri -> {
+            attempts.incrementAndGet();
+            if (uri.getHost().equals("official.invalid")) throw new java.net.UnknownHostException("https://signed.invalid/?token=secret");
+            throw new javax.net.ssl.SSLException("https://signed.invalid/?token=secret");
+        }, mirroredManifest());
+        var failure = assertThrows(ModelInstaller.DownloadException.class, () -> installer.install(target(), QUIET, ACTIVE));
+        assertEquals(4, attempts.get());
+        assertEquals(3, failure.getSuppressed().length);
+        assertTrue(failure.getMessage().contains("official.invalid: host not found"));
+        assertTrue(failure.getMessage().contains("mirror.invalid: TLS connection failed"));
+        assertTrue(failure.getMessage().contains("vocab.txt"));
+        assertFalse(failure.getMessage().contains("secret"));
+        assertArrayEquals(previous, Files.readAllBytes(target().resolve("vocab.txt")));
+        assertNoTemporaryDirectories();
+    }
+
+    @Test
+    void cancellationAfterAConnectionFailureDoesNotTryAnotherSource() throws Exception {
+        AtomicInteger attempts = new AtomicInteger();
+        AtomicBoolean canceled = new AtomicBoolean();
+        ModelInstaller installer = new ModelInstaller(uri -> {
+            attempts.incrementAndGet(); canceled.set(true); throw new IOException("Canceled during connect");
+        }, mirroredManifest());
+        assertThrows(CancellationException.class, () -> installer.install(target(), QUIET,
+                () -> { if (canceled.get()) throw new CancellationException(); }));
+        assertEquals(1, attempts.get());
+        assertFalse(Files.exists(target()));
         assertNoTemporaryDirectories();
     }
 
