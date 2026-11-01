@@ -533,6 +533,12 @@ public final class ChatPanel extends JPanel implements AutoCloseable {
     public ConversationController conversation() { return controller; }
     /** Model progress changes update the compact guide without rebuilding conversation rows. */
     public void refreshSetupStatus() { if (!closed) { refreshSetupGuide(); revalidate(); repaint(); } }
-    public void refreshMode() { if (!closed) { pending = null; render(controller.snapshot()); } }
+    /** Settings only affect mode/setup chrome, not message components or pending stream updates. */
+    public void refreshMode() {
+        if (closed) return;
+        flush();
+        mode.setVisible(host.demoMode());
+        refreshSetupStatus();
+    }
     @Override public void close() { closed = true; updates.stop(); controller.close(); }
 }

@@ -22,7 +22,17 @@ public final class ChatPanelTest {
             SwingUtilities.invokeAndWait(() -> {
                 panel.refreshMode(); layout(panel);
                 check(labels(panel).stream().anyMatch(s -> s.contains("Sample citation")), "demo citations labelled as examples");
+                JButton originalCitation = citationButtons(panel).getFirst();
+                JTextArea originalAnswer = descendants(panel).stream().filter(JTextArea.class::isInstance)
+                        .map(JTextArea.class::cast).filter(area -> !area.isEditable() && !area.getText().isBlank())
+                        .findFirst().orElseThrow();
+                originalAnswer.select(0, 2);
+                for (int repeat = 0; repeat < 3; repeat++) panel.refreshMode();
+                check(citationButtons(panel).getFirst() == originalCitation, "closing unchanged settings preserves conversation components");
+                check(originalAnswer.getSelectionEnd() == 2 && descendants(panel).contains(originalAnswer),
+                        "closing settings preserves selected answer text");
                 host.demo = false; panel.refreshMode(); layout(panel);
+                check(citationButtons(panel).getFirst() == originalCitation, "changing mode does not rebuild historical rows");
                 check(labels(panel).stream().noneMatch(s -> s.contains("Similarity")), "changing mode does not add fake scores to history");
                 citationButtons(panel).getFirst().doClick();
                 check(host.opened.equals(List.of(true)), "historical demo click retains demonstration source");

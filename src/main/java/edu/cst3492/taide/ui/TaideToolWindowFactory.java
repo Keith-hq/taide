@@ -47,6 +47,22 @@ public final class TaideToolWindowFactory implements ToolWindowFactory, DumbAwar
             if (content != null && content.getComponent() instanceof ChatPanel panel) panel.askAbout(context);
         });
     }
+
+    /** Keep a validated model usable while the same directory is checked again. */
+    static SetupStatus combineSetup(ModelSetupService.Status model, ProjectSetupChecker.Result config) {
+        // ModelSetupService only retains ready during refresh for the same model directory.
+        // A genuinely new/missing model or a completed failed config check still disables live setup.
+        boolean checked = config != null && (model.checked() || model.preparing() || model.ready());
+        String detail = !model.ready() || model.preparing() ? model.detail()
+                : config == null ? "Checking API settings and material index…" : config.detail();
+        if (model.preparing() && model.total() > 0) {
+            long percent = Math.min(100, Math.max(0, Math.round(100d * model.downloaded() / model.total())));
+            detail += " · " + percent + "%";
+        }
+        return new SetupStatus(checked, model.ready(), config != null && config.apiReady(),
+                config != null && config.indexReady(), model.preparing(), detail);
+    }
+
     private static final class IdeHost implements ChatPanel.Host, AutoCloseable {
         private final Project project;
         private final ModelSetupService models;
@@ -99,7 +115,9 @@ public final class TaideToolWindowFactory implements ToolWindowFactory, DumbAwar
             long revision = settings.revision();
             SettingsSnapshot snapshot = settings.snapshot();
             observedSettingsRevision = revision;
-            configuration = null; publishSetup();
+            // Rechecking is not first use: keep the last completed result until its replacement
+            // arrives. Generation/revision guards below still reject stale background results.
+            publishSetup();
             checkTask = ApplicationManager.getApplication().executeOnPooledThread(() -> {
                 ProjectSetupChecker.Result checked;
                 try {
@@ -127,17 +145,7 @@ public final class TaideToolWindowFactory implements ToolWindowFactory, DumbAwar
         /** ModelSetupService delivers listeners on EDT; this method only combines detached state. */
         private void publishSetup() {
             if (closed || project.isDisposed()) return;
-            ModelSetupService.Status model = models.status();
-            ProjectSetupChecker.Result config = configuration;
-            boolean checked = config != null && (model.checked() || model.preparing());
-            String detail = !model.ready() || model.preparing() ? model.detail()
-                    : config == null ? "Checking API settings and material index…" : config.detail();
-            if (model.preparing() && model.total() > 0) {
-                long percent = Math.min(100, Math.max(0, Math.round(100d * model.downloaded() / model.total())));
-                detail += " · " + percent + "%";
-            }
-            SetupStatus next = new SetupStatus(checked, model.ready(), config != null && config.apiReady(),
-                    config != null && config.indexReady(), model.preparing(), detail);
+            SetupStatus next = combineSetup(models.status(), configuration);
             if (Objects.equals(next, setup)) return;
             setup = next;
             if (panel != null) panel.refreshSetupStatus();
