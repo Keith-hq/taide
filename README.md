@@ -7,7 +7,7 @@
 <p><b>面向 CST3492 的 IntelliJ IDEA 插件</b><br/>检索课程材料、流式问答，并在编辑器中执行智能动作</p>
 
 <p>
-  <img src="https://img.shields.io/badge/状态-F0与F1已接入_实机待验收-f59e0b?style=for-the-badge" alt="status"/>
+  <img src="https://img.shields.io/badge/状态-F0与F1人工验收通过-22c55e?style=for-the-badge" alt="status"/>
   <img src="https://img.shields.io/badge/课程-CST3492-2563EB?style=for-the-badge" alt="course"/>
   <img src="https://img.shields.io/badge/组别-Group_B-8B5CF6?style=for-the-badge" alt="group"/>
   <img src="https://img.shields.io/badge/版本-0.1.0_SNAPSHOT-9CA3AF?style=for-the-badge" alt="version"/>
@@ -25,9 +25,9 @@
 </div>
 
 > [!IMPORTANT]
-> **当前状态：F0 与 F1 三个智能动作均已在代码中接入正式项目服务，正在进行实机验收与交付准备。** 最新核查基线为 `main` 的 `525b9e0`，最后更新：2026-10-26。
+> **当前状态：F0 与 F1 三个智能动作均已完成人工验收。** Windows IntelliJ IDEA Community 2024.2.4 上的六项 E2E 场景全部通过；验收记录见 [验收台账](docs/e2e/E2E_RESULTS.md)。验收时 `main` 基线为 `d3128ac`，最后更新：2026-11-03。
 > 聊天默认开启演示模式，返回明确标注的固定示例。真实课程问答需要检索模型、课件索引和有效 API Key，并由用户显式关闭演示模式。F1 动作使用实际配置的 API，不由聊天演示模式提供固定答案。
-> [六项 Windows IDEA 验收](docs/e2e/E2E_RESULTS.md)已全部执行并通过。操作步骤见 [验收指南](docs/e2e/E2E_GUIDE.md)和 [六项真实场景 Word 操作文档](docs/TAIDE-Windows-IDEA六项真实场景验收操作文档-V1.0.0.docx)。
+> 六项验收覆盖真实课程问答与引用、JUnit 生成和运行、无索引模型访问、暂存区提交、课件审查及来源页定位。具体结果和验收环境见 [验收台账](docs/e2e/E2E_RESULTS.md)，复现步骤见 [验收指南](docs/e2e/E2E_GUIDE.md)和 [六项真实场景 Word 操作文档](docs/TAIDE-Windows-IDEA六项真实场景验收操作文档-V1.0.0.docx)。
 
 ---
 
@@ -46,9 +46,9 @@ TAIDE 为 **CST3492 — Java 企业级应用开发**（2026/27 学年第一学�
 | **F0.3** | 原生聊天工具窗 | 右侧 TAIDE 面板，消息历史、流式输出、代码块复制、停止生成、重试与新会话；每条消息保留发送时的演示/真实来源与课件目录 |
 | **F0.4** | 选区上下文 | 选中代码右键 → `Ask TAIDE about This Code`；无选区时置灰，Java 文件补充所属类 |
 | **首次使用** | 模型准备与引导 | 展示模型、API/课件与索引准备状态；用户点击后下载并校验模型，也可选择已有目录；不会自动退出演示模式 |
-| **F1.1** | JUnit 测试生成 | 正式模型服务已接入；支持语法校验、可编辑预览、创建文件与撤销；无需课件索引或 ONNX，生成结果编译与运行待实机验收 |
-| **F1.2** | 提交信息生成 | 正式模型服务已接入；支持暂存区差异、Conventional Commit 预览、复制与确认后本地提交；无需课件索引或 ONNX，真实仓库操作待验收 |
-| **F1.3** | 课件感知代码审查 | 复用聊天的模型、检索器与索引，结构化问题、引用核验和默认来源导航已接入；真实课件审查与文件预览待验收 |
+| **F1.1** | JUnit 测试生成 | 支持语法校验、可编辑预览、创建文件与撤销；E2E-02 验证生成测试编译并运行通过，E2E-03 验证无索引时可独立生成；无需课件索引或 ONNX |
+| **F1.2** | 提交信息生成 | 支持暂存区差异、Conventional Commit 预览、复制与确认后本地提交；E2E-04 验证只提交暂存内容且未暂存修改保持不变；无需课件索引或 ONNX |
+| **F1.3** | 课件感知代码审查 | 复用聊天的模型、检索器与索引，提供结构化问题、引用核验和来源导航；E2E-05/06 验证真实课件审查及引用页定位通过 |
 
 **引用指定页定位：** 点击聊天或审查引用后，TAIDE 在独立编辑器标签中直接渲染原始 1-based PDF 页码 / PPTX 幻灯片。同一文档复用标签，可用 `Previous` / `Next`、页码输入与 `Go` 导航，并调整缩放。解析与渲染在后台执行，不修改源文件；越界页码与损坏文件显示英文错误。`Open original` 另按 IDE 文件关联打开原件。演示引用只显示说明，不会打开同名真实课件。预览不包含幻灯片动画，字体和复杂图形效果受本机字体与渲染库支持限制。
 
@@ -58,22 +58,22 @@ TAIDE 为 **CST3492 — Java 企业级应用开发**（2026/27 学年第一学�
 
 ### 集成核查结果
 
-核查以 `main` 的 `525b9e0`（2026-10-26）为基线，包含来源导航、A 的共享运行时和 C 的正式动作接入。下表的“代码已接通”表示正式插件入口和调用路径已连接；实际 IDE 中使用有效 API Key、真实课件完成操作，仍须单独验收。
+核查基线为验收时 `main` 的 `d3128ac`（2026-11-03），包含来源导航、共享运行时和三个智能动作的正式接入。下表按 Windows IDEA 人工验收结果记录；具体环境、范围和场景结果见 [E2E 台账](docs/e2e/E2E_RESULTS.md)。
 
-| 链路 | 当前结论 | 依据与剩余工作 |
+| 链路 | 当前结论 | 验收依据 |
 |:--|:--|:--|
-| 首次引导 → 模型下载/已有目录 → 校验 → 模型加载 | 代码已接通 | `ModelSetupService` 管理共享目录，问答与重建使用同一路径；真实模型安装、校验、缓存复用和推理已验证，IDE 内联网下载待人工验收 |
-| 课件目录 → Rebuild → 本地索引 → 聊天检索 | 代码已接通 | `ProjectKnowledgeBaseController` 委托同一个 `TaideServiceImpl`；重建成功使聊天资源缓存失效 |
-| 普通提问/编辑器选区 → 检索 → API → 流式回答 | 代码已接通 | 正式工具窗解析项目问答服务，设置与 PasswordSafe 提供连接参数；完整 IDE 操作链仍需真实环境验收 |
-| 聊天 / 审查引用 → 源文件 → 指定页 | 代码已接通 | 内置 PDF/PPTX 预览直接定位原始页码；真实课程资料的人工验收仍需记录 |
-| F1.1 JUnit 生成 → 预览 → 写入/撤销 | 代码已接通 | `AutomationServices.withModel` 调用正式项目服务；需验证生成测试可编译、可运行及取消不写入 |
-| F1.2 暂存区 → 提交信息 → 预览/本地提交 | 代码已接通 | `withModel` 使用已保存的连接配置与凭据；需在独立临时仓库验证确认提交、暂存区边界与未暂存文件保留 |
-| F1.3 代码审查 → 课件检索 → 引用导航 | 代码已接通 | `withModelAndRetriever` 取得聊天核心的资源租约；审查前固定来源目录或自定义回调，需验证真实发现与引用打开 |
-| PR → CI 测试/打包 → 兼容检查 | CI 已通过 | `525b9e0` 的 [Build and Test](https://github.com/Keith-hq/taide/actions/runs/40275125811) 中 `build`、`compatibility` 均成功；不包含 IDE 人工验收 |
+| 首次引导 → 模型下载/已有目录 → 校验 → 模型加载 | 人工验收通过 | `ModelSetupService` 管理共享目录；模型准备与真实课程问答见 E2E-01 |
+| 课件目录 → Rebuild → 本地索引 → 聊天检索 | 人工验收通过 | `ProjectKnowledgeBaseController` 委托同一个 `TaideServiceImpl`；E2E-01 验证重建、检索和真实课件回答 |
+| 普通提问/编辑器选区 → 检索 → API → 流式回答 | 人工验收通过 | 正式工具窗、设置与 PasswordSafe 连接真实模型服务；E2E-01 |
+| 聊天 / 审查引用 → 源文件 → 指定页 | 人工验收通过 | 内置 PDF/PPTX 预览定位原始页码；E2E-01、E2E-06 |
+| F1.1 JUnit 生成 → 预览 → 写入/撤销 | 人工验收通过 | `AutomationServices.withModel` 使用正式服务；E2E-02 验证生成测试运行通过，E2E-03 验证无索引场景 |
+| F1.2 暂存区 → 提交信息 → 预览/本地提交 | 人工验收通过 | `withModel` 使用已保存的连接配置与凭据；E2E-04 验证暂存边界、确认提交和未暂存文件保留 |
+| F1.3 代码审查 → 课件检索 → 引用导航 | 人工验收通过 | `withModelAndRetriever` 复用聊天核心资源；E2E-05/06 验证课件发现、引用和来源导航 |
+| PR → CI 测试/打包 → 兼容检查 | 历史 CI 通过 | `525b9e0` 的 [Build and Test](https://github.com/Keith-hq/taide/actions/runs/40275125811) 中 `build`、`compatibility` 均成功；该记录为历史 CI 基线，人工验收结果独立记录在 E2E 台账 |
 
 **F1 的正式服务来源：** 已注册的 `TaideServiceImpl` 实现 `AutomationRuntimeAccess`。F1.1/F1.2 通过 `withModel` 使用独立缓存的模型客户端，与聊天共享连接配置和凭据机制，不要求课件索引或加载 ONNX；F1.3 通过 `withModelAndRetriever` 复用聊天核心的模型、检索器和索引，并在回调期间持有资源租约。无需额外注册 `LlmClient` / `Retriever` 或手动调用 `bind`；绑定接口保留给测试及定制场景。详见 [自动化服务接入](docs/AUTOMATION.md#服务接入)。
 
-**剩余交付：** 六个场景已按 [E2E 指南](docs/e2e/E2E_GUIDE.md)全部执行并通过，结果见 [验收台账](docs/e2e/E2E_RESULTS.md)。另需核验界面主题、缩放、窄面板和下载失败等异常状态；A 补齐课件页码抽检，全组完成英文报告、演示材料、干净机器安装与彩排。
+**人工验收结论：** F0 与 F1 功能均已完成人工验收，六项 Windows IDEA E2E 场景全部通过。当前没有待验收的插件功能；验收环境、场景范围与结果见 [E2E 台账](docs/e2e/E2E_RESULTS.md)。
 
 ## 🛠️ 技术栈
 
@@ -157,7 +157,7 @@ macOS/Linux 使用 `./gradlew`。安装包位于 `build/distributions/taide-0.1.
 .\tools\verify-b.ps1 -JavaHome 'C:\path\to\jdk-21'
 ```
 
-结果位于 `build/b-verification/`，14 张界面截图位于其 `screenshots/`。这会渲染实际 `ChatPanel`，覆盖窄停靠窗和 1366×768 等尺寸；不等于已在真实 IDE 中完成人工验收。
+结果位于 `build/b-verification/`，14 张界面截图位于其 `screenshots/`。脚本渲染实际 `ChatPanel`，覆盖窄停靠窗和 1366×768 等尺寸；真实 IDEA 人工验收已完成，结果见 [E2E 台账](docs/e2e/E2E_RESULTS.md)。
 
 在启动的 IDE 中通过 `View → Tool Windows → TAIDE` 打开面板。默认勾选 `Use demo service`，聊天返回固定示例，支持检查流式显示、复制、取消和引用状态。演示模式不调用模型、不读取课件，也不替 C 的自动化动作提供服务。
 
@@ -211,11 +211,11 @@ macOS/Linux 使用 `./gradlew`。安装包位于 `build/distributions/taide-0.1.
 .\gradlew.bat test --tests '*CodeContextExtractorPlatformTest'
 ```
 
-截至 2026-10-26，`main` 的 `525b9e0` 已通过 [CI run 40275125811](https://github.com/Keith-hq/taide/actions/runs/40275125811)：`build` 作业执行交付工具测试、Gradle 构建/测试、插件打包与结构验证、示例工程构建，`compatibility` 作业执行插件二进制兼容性检查。安装包、测试报告和兼容报告按该 commit 分别上传为 artifact；选择与待验收代码一致的成功构建，下载外层 ZIP 后取出插件安装 ZIP。
+`main` 的历史基线 `525b9e0` 已通过 [CI run 40275125811](https://github.com/Keith-hq/taide/actions/runs/40275125811)：`build` 作业执行交付工具测试、Gradle 构建/测试、插件打包与结构验证、示例工程构建，`compatibility` 作业执行插件二进制兼容性检查。该 CI 记录用于说明自动化构建链路；当前功能人工验收对应的六项结果见 [E2E 台账](docs/e2e/E2E_RESULTS.md)。
 
 历史 B 侧模型准备、界面渲染和来源导航验证记录保留在 [TEAM §5.2](docs/TEAM.md#52-b--uiux--context-lead)。其中的测试数量及实验 API 提示对应 2026-10-24 的版本，不能作为最新主分支的测试统计；`examples/junit-demo` 的历史 `test NO-SOURCE` 也不证明生成的测试已编译运行。
 
-默认测试与 CI 不要求真实 API Key 或课件，真实依赖测试须按各自开关和环境执行。Windows IDEA 的六项验收尚未执行；请按 [环境说明](docs/e2e/TEST_ENVIRONMENT.md)和 [验收指南](docs/e2e/E2E_GUIDE.md)操作，记录实际安装包 SHA-256、构建 commit、IDE 版本及截图，填写 [验收台账](docs/e2e/E2E_RESULTS.md)。
+默认测试与 CI 不要求真实 API Key 或课件；真实依赖测试须按各自开关和环境执行。Windows IDEA 的六项人工验收均已通过，环境与结果记录在 [验收台账](docs/e2e/E2E_RESULTS.md)；复现操作见 [环境说明](docs/e2e/TEST_ENVIRONMENT.md)和 [验收指南](docs/e2e/E2E_GUIDE.md)。
 
 C 的运行时接入、真实模型验证、CI 和提交打包流程见 [docs/AUTOMATION.md](docs/AUTOMATION.md)。B 的服务与设置协作约定见 [TEAM §4.6](docs/TEAM.md#46-b-侧集成约定2026-10-26)。
 
@@ -275,10 +275,8 @@ taide/
 | 日期 | 计划节点 |
 |:--|:--|
 | 10-22 | 接口契约冻结（v1.0） |
-| 10-26 | 当前：F0 + F1 代码接入完成，六项 Windows IDEA 验收待执行 |
-| 10-30 | 目标：完成 F0 + F1 实机联调、引用核验与验收留证 |
-| 11-01 | 报告、幻灯片与插件打包 |
-| 11-03 23:00 | 提交截止 |
+| 10-26 | F0 + F1 代码接入完成 |
+| 11-03 | Windows IDEA 六项人工验收全部通过，见 [E2E 台账](docs/e2e/E2E_RESULTS.md) |
 | 11-04 13:30 | 课堂演示 |
 
 ---
